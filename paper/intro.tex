@@ -1,0 +1,147 @@
+\chapter{Introduction}
+\label{cha:intro}
+This first chapter will describe the general background of the thesis as well as the goals and modus operandi. Firstly, plasma and its simulation techniques are analysed. Starting off with some background on plasma in subsection \ref{subsec:plasma background} and explaining some of the characteristics in \ref{subsec:plasma characteristics}. Different approaches to describe the evolution of plasma are described in subsection \ref{subsec:plasma approaches}. Special attention is given to particle-in-cell methods, found in subsection \ref{subsec:plasma pic}, since the plasma simulation algorithm used in thesis it the energy conserving semi-implicit method, ECSIM \cite{lapenta_exactly_2017}, which is presented in subsection \ref{subsec:plasma intro ECSIM}. Section \ref{sec:intro time para} gives some background information on parallel-in-time methods and presents Parareal \cite{lions_resolution_2001} in subsection \ref{subsec:intro parareal} along with some of its derivatives, such as PFASST \cite{emmett_toward_2012} in \ref{subsec:intro pfasst} and subsection \ref{subsec:intro symplectic parareal}, which describes symplectic Parareal \cite{bal_symplectic_2008}. This chapters ends with section \ref{sec:goals and methodology} where the goals and methodology of the rest of the paper are presented.
+
+\section{Plasma}
+\label{sec:intro plasma}
+\subsection{Background}
+\label{subsec:plasma background}
+Plasma is a state of matter that occurs in situations with high temperatures or large electromagnetic fields. It consists of unbounded, charged particles that interact with and through the electromagnetic field, where each particle type is often referred to as a species. Plasma is present in the sun and is the driving force behind solar winds. These gusts of plasma particles could negatively impact electronics on earth if the magnetosphere did not shield us \cite{liu_solar_2021}. These are not the only plasma interactions that could impact our daily lives. Current research is also trying to replicate the fusion that occurs in the plasma of the sun to satisfy our energy demands \cite{degrave_magnetic_2022}.  
+\newline
+\subsection{Characteristics}
+\label{subsec:plasma characteristics}
+One of the ways a plasma can be characterized, is by its Debye length, $\lambda_D$. This value describes how the electric potential changes around a perturbation point charge:
+\[\varphi(x) = \varphi_0 e^{-\frac{x}{\lambda_D}}\]  
+This means that a plasma will create a shielding around any introduced local charges, as to minimize influence at large distances from this perturbation.
+The Debye length can also be used to define weakly and strongly coupled plasma. If there are only a few particles in a box of volume $\lambda_D^3$, then at each point in space there would only be a couple of particles close by. This means that if another particle would get closer or one of the present particles went further, then the potential energy at that point would sharply increase or decrease, respectively. In this case the electrostatic potential is dominant and the trajectories of the species are \textbf{strongly} influenced by the interaction with close particles.
+When a plasma has a large number of particles in its Debye length, it is considered to be weakly coupled. In this case, the electrostatic potential at each point in space is determined by the movements of a large number of particles. This means that whether one particle leaves or enters the area of influence does not impact the overall field that much. Only the behaviour of the plasma at large matters, since the individual particles only \textbf{weakly} impact each other. As a result the trajectories of the species is in fact determined mostly by the kinetic energy of the particles.\cite{giovanni_lapenta_introduction_nodate}
+\newline
+\subsection{Time evolution approaches}
+\label{subsec:plasma approaches}
+Describing the evolution and state of a plasma can be done in two main ways: the kinetic and fluid approaches. The kinetic description is very powerful in describing the evolution at the microscopic level. It gives a statistical view on the distribution of positions and velocities of the particles in the plasma. The Boltzmann equation states how this distribution can change in time due external forces, diffusion and internal collisions:
+\[\diff{f(\textbf{x}(t), \textbf{v}(t),t))}{t} =\left(\diff{f}{t}\right)_{force}+\left(\diff{f}{t}\right)_{diff}+ \left(\diff{f}{t}\right)_{coll}\]
+Where $\int f(\textbf{x}(t),\textbf{v}(t),t)d\textbf{v} = n(\textbf{x}(t),t)$ and $n(\textbf{x}(t),t)$ is the density of the plasma in a volume $d\textbf{x}$ around $\textbf{x}(t)$. Using Liouville's theorem, however, it can be found that only the internal collisions with particles matter.\[\diff{f(\textbf{x}(t), \textbf{v}(t),t))}{t} = \left(\diff{f}{t}\right)_{coll}\]
+Using Newton's laws of motion and expanding the derivative with forces from both gravity and the electromagnetic field gives:
+\[\diffp{f}{t} + \textbf{v} \diffp{f}{{\textbf{x}}} + \left( \frac{\textbf{F}}{m} + \frac{q}{m}(\textbf{E} + \textbf{v} \times \textbf{B})\right)\diffp{f}{{\textbf{v}}}= \left(\diff{f}{t}\right)_{coll}\]
+In this notation $\textbf{v}(t)$ and $\textbf{x}(t)$ represent the velocity and position at time $t$, respectively. $q$ represents the charge and $m$ the mass of the species in question.
+While this notation leads to accurate simulations at small scales, it can be prohibitively computationally expensive. Especially finding the $\left(\diff{f}{t}\right)_{coll}$ term can require extensive knowledge about the problem. The latter problem is less of an issue in very weakly coupled systems, since in this case the collision term can be set to 0, leading to the Vlasov equation.
+\newline
+The fluid approach seeks instead to describe the macroscopic behaviour of the plasma in terms of wave dynamics. The general form of the wave equation can be written as: \[\psi(x,t) = \tilde{\psi}e^{-i\omega t + i k x}\] where $\psi$ is the desired quantity, k the wave number and $\omega$ the angular velocity, need to be found. A well known frequency is the \textit{plasma frequency} of a species:
+\[\omega_{ps} = \left(\frac{n_s q_s^2}{m_s\epsilon_0}\right)^{\frac{1}{2}}\]
+it is very useful in estimating the response time of a plasma.
+\newline
+Although this representation is less computationally expensive, certain electromagnetic phenomena are only able to be simulated by taking into account the evolution at small scale \cite{biskamp_magnetic_2000}. Therefore, a simulation strategy needs to be found that can simulate these large scale phenomena, while not having to explicitly resolve the small time scales. This can be done using the particle-in-cell, PIC, family of methods. \cite{giovanni_lapenta_introduction_nodate}
+\subsection{PIC}
+\label{subsec:plasma pic}
+PIC methods combine a large number of physical particles, that are close to each other in phase space, into super particles. These computational particles have a defined finite shape and interact weakly with each other, meaning their interaction with others weakens as the overlap between them increases. The shape of a super particle, $p$,is determined in phase space by the \textit{shape functions} for \textbf{x} and \textbf{v}, $S_{\textbf{x}}(\textbf{x}-\textbf{x}_p(t))$ and $S_{\textbf{v}}(\textbf{v}-\textbf{v}_p(t))$ respectively. It is then assumed that the actual, physical distribution function can be represented as the super position of these computational particles:
+\[f(\textbf{x}(t),\textbf{v}(t),t) = \sum_{p}N_pS_{\textbf{x}}(\textbf{x}-\textbf{x}_p(t))S_{\textbf{v}}(\textbf{v}-\textbf{v}_p(t))\]
+The evolution of these particles follows the simple laws of motion while conserving the number of physical particles represented by the computational particle.
+\begin{align}
+	\diff{{\textbf{x}_p}}{t} &= \textbf{v}_p \\
+	\diff{{\textbf{v}_p}}{t} &= \frac{1}{m_p}\left(\textbf{F} + q_p(\textbf{E} + \textbf{v}\times \textbf{B})\right)
+\end{align}
+These equations represent particle mover part of the PIC, finding the values for the electric field, \textbf{E}, and magnetic field, \textbf{B}, is referred to as the field solver. The fields can be found by solving the Maxwell equations:
+\begin{align}
+	\nabla \cdot \mathbf{E} &= \frac{\rho}{\varepsilon_0} \\
+	\nabla \cdot \mathbf{B} &= 0 \\
+	\nabla \times \mathbf{E} &= -\frac{\partial \mathbf{B}}{\partial t} \\
+	\nabla \times \mathbf{B} &= \mu_0 (\mathbf{J} + \varepsilon_0 \frac{\partial \mathbf{E}}{\partial t})
+\end{align}
+Calculating these in practice requires discretization. This is done by subdividing the position space in a grid on which the electric and magnetic fields are calculated. Particles can then move across this grid and the experienced fields for these particles will be the interpolation of the field on nearby grid points. The standard \textit{interpolation function} from a particle, $p$, to a grid point , $g$, is defined as \[W(\textbf{x}_g - \textbf{x}_p) = \int S_{\textbf{x}}(\textbf{x}-\textbf{x}_p)b_0\left(\frac{\textbf{x}-\textbf{x}_g}{\Delta\textbf{x}}\right) d\textbf{x}\] 
+Where $b_0$ is the b-spline of order 0. This means that if the shape function $S_\textbf{x} = \frac{1}{\Delta p}b_l\left(\frac{\textbf{x}-\textbf{x}_p}{\Delta p}\right))$ and $\Delta p = \Delta \textbf{x}$, then the interpolation function can be simplified using the properties of b-splines to 
+\[W(\textbf{x}_g - \textbf{x}_p) =b_{l+1}\left(\frac{\textbf{x}-\textbf{x}_g}{\Delta \textbf{x}}\right)\]
+
+The actual integration of the differential equations is what sets apart all of the different PIC methods. For example, a simple algorithm could use the \textit{leap-frog scheme} for the particle mover: 
+\begin{align*}
+	\textbf{x}_p^{n+1} &= \textbf{x}_p^n + \Delta t \textbf{v}_p^{n+\frac{1}{2}} \\
+	\textbf{v}_p^{n+\frac{3}{2}} &= \textbf{v}_p^{n+\frac{1}{2}} + \Delta t \frac{q_p}{m_p}\left(\frac{\textbf{F}(\textbf{x}_p^{n+1})}{q_p} +\textbf{E}_p(\textbf{x}_p^{n+1}) + \bar{\textbf{v}}_p \times \textbf{B}(\textbf{x}_p^{n+1})\right)\\
+\end{align*}
+Where $\bar{\textbf{v}}_p$ is the average velocity in between time steps $\frac{\textbf{v}_p^{n+\frac{3}{2}}+\textbf{v}_p^{n+\frac{1}{2}}}{2}$.
+It is clear that the position and velocity are calculated at different time steps. This staggering makes the method second order accurate. The electric and magnetic fields can be found by solving the following equations \cite{jiang_origin_1996}:
+  \begin{align*}
+	\nabla_g \times \mathbf{E}^{n} +\frac{1}{c}\frac{\mathbf{B}^{n+1} - \mathbf{B}^{n}}{\Delta t} &= 0 \\
+	\nabla_g \times \mathbf{B}^{n} -\frac{1}{c}\frac{\mathbf{E}^{n+1} - \mathbf{E}^{n}}{\Delta t} &= \frac{4 \pi}{c}\bar{\mathbf{J}}_g\\
+\end{align*}
+Depending on how the current at each grid point, $\bar{\mathbf{J}}_g$, is calculated also heavily influences the properties of the method. The method above, for example, would not conserve energy. This means extra care needs to be taken so that results obtained by this method would not be too different from reality. of course, it would be better if these extra steps do not need to be taken. While there are multiple PIC methods that are energy conserving, most of them are not direct and require some form of linear iterations or even non-linear iterations. \cite{giovanni_lapenta_introduction_nodate}
+
+\subsection{ECSIM}
+\label{subsec:plasma intro ECSIM}
+The energy conserving semi-implicit method, ECSIM, is fully energy conserving, unconditionally stable and only requires a linear solver \cite{lapenta_exactly_2017}. It is based on iPIC3D \cite{markidis_multi-scale_2010} and the energy conserving PIC $\theta$-scheme \cite{brackbill_implicit_1982}. Its particle mover is given by 
+\begin{align*}
+	\textbf{x}_p^{n+\frac{1}{2}} &= \textbf{x}_p^{n-\frac{1}{2}} + \Delta t \textbf{v}_p^{n} \\
+	\textbf{v}_p^{n+1} &= \textbf{v}_p^{n} + \Delta t \frac{q_p}{m_p}\left(\textbf{E}^{n+\theta}_p(\textbf{x}_p^{n+\frac{1}{2}}) + \bar{\textbf{v}}_p \times \textbf{B}^n(\textbf{x}_p^{n+\frac{1}{2}})\right)\\
+\end{align*}
+and its field solver is: 
+   \begin{align*}
+ 	\nabla_g \times \mathbf{E}^{n + \theta} +\frac{1}{c}\frac{\mathbf{B}^{n+1} - \mathbf{B}^{n}}{\Delta t} &= 0 \\
+ 	\nabla_g \times \mathbf{B}^{n+ \theta} -\frac{1}{c}\frac{\mathbf{E}^{n+1} - \mathbf{E}^{n}}{\Delta t} &= \frac{4 \pi}{c}\bar{\mathbf{J}}_g\\
+ \end{align*}
+ The main innovation of the method is the way in which the current is calculated. While other algorithms keep some non-linearities or linearize the current to ensure energy conservation, ECSIM calculates the current without approximation. It does this by using a \textit{mass matrices}, $M_{gg'}$, of which the elements are given by (using the shorthand notation $W(\textbf{x}_g- \textbf{x}_p)= W_{gp}$): \[
+ M^{ij}_{g g'} = \sum_p q_p \alpha_p^{ij,n} W_{g'p} W_{gp}\]
+ The elements $\alpha_p^{ij,n}$ are part of the rotation matrix that allows for $\bar{\textbf{v}}_p$ to be written as \[\bar{\textbf{v}}_p = \hat{\textbf{v}}_p + \frac{q_p \Delta t}{2 m_p}\hat{\textbf{E}}_p\]
+ where 
+ \[ \hat{\textbf{v}}_p = \alpha^n_p \textbf{v}_p^n, \quad \hat{\textbf{E}}_p = \alpha^n_p \textbf{E}_p^{n+\theta}
+ \]
+ Using these mass matrices, the current can be calculated as 
+ \[\bar{\textbf{J}}_g = \frac{1}{V_g}\left(\sum_p q_p \hat{\textbf{v}}_p W_{pg} + \frac{q_p \Delta t}{2 m_p}\sum_{g'}M_{g g'} \textbf{E}^{n+\theta}_{g'}\right)\]
+The ECSIM algorithm is also compatible with smoothing operations and subcycling. Subcycling is the act of not performing the field equations in every time step. This cuts down on the computational cost in exchange for accuracy. Since particles normally follow a gyrating path in the presence of the electromagnetic fields, the subcycling can also be used to step over the gyration cycle for the fields, while being able to use an average of the position during the gyration while calculating the fields in the next time step.
+
+\section{Parallel-in-time}
+\label{sec:intro time para}
+\subsection{Background}
+\label{subsec:pint background}
+Current chip and computer design is investing more and more into parallel processing instead of increasing clock frequency \cite{bautista_intel_nodate}. There are multiple reasons for this: increasing power consumption and the consequent heat creation, physical limitations such as the speed of light, etc. Algorithms need to be able to take advantage of these extra processors. For differential equations this has already been done quite extensively in the space domain \cite{adams_parallel_1999,du_expandable_2020}. Unfortunately, the parallel gains are not infinite. At a certain point, communication overhead will become larger than the speed up of using more processors. Even increasing the spatial accuracy is not always possible in the same wall clock time. For example partial differential equations that are subject to the Courant-Friedrichs-Lewy \cite{courant_uber_1928} condition, will have to increase the accuracy of the time domain as well, leading to more time steps that need to be simulated. Due to these reasons it is also desirable to parallelize the solving of differential equations in the time domain. 
+The following sections assume a system of ordinary differential equations of the form 
+\[\diff{\textbf{u}(t)}{t} = \textbf{f}(\textbf{u}(t)), \quad \textbf{u}(0) = \textbf{u}_0, \quad t\in[0,T]\]
+This ODE is discretized into N + 1 time steps $0 = t_0 < t_1 < t_2 < \hdots < t_{N} = T$
+\subsection{Parareal}
+\label{subsec:intro parareal}
+A famous parallel-in-time method is Parareal \cite{lions_resolution_2001}. It can be derived as a multiple shooting or time-multigrid method and can have very good convergence properties for parabolic partial differential equations \cite{gander_analysis_2007}. Unfortunately, the convergence for the hyperbolic case can be a lot less impressive, although even some chaotic systems have been solved using it \cite{d_samaddar_parallelization_2010}. The algorithm uses a coarse solver, $\textbf{G}$, and fine solver, $\textbf{F}$.These solvers have the property \[\textbf{G}(\textbf{U}_n, t_n, t_{n+1}) = \textbf{U}_{n+1}, \quad
+\textbf{F}(\textbf{U}_n, t_n, t_{n+1}) = \tilde{\textbf{U}}_{n+1}
+\]
+The difference between $\textbf{G}$ and $\textbf{F}$ is that while $\textbf{G}$ is faster to calculate, $\textbf{F}$ should be more accurate. By leveraging the difference in time and accuracy, Parareal hopes to calculate a solution with accuracy close to $\textbf{F}$ in a faster manner than what it would achieve in serial time. It does this by first solving the ODE using the coarse solver in serial and then iteratively adapting the found solution using the following Predictor-Corrector scheme:
+\[\textbf{U}_{n+1}^{k+1} = \textbf{G}(\textbf{U}_n^{k+1}, t_n, t_{n+1}) + \textbf{F}(\textbf{U}_n^k, t_n, t_{n+1}) - \textbf{G}(\textbf{U}_n^k, t_n, t_{n+1})\]
+Since the fine solver is used in each iteration, to reach a parallel speed up, it is clear that the number of Parareal iteration, $K$, needs to be (a lot) smaller than $N$. It can be shown that the parallel efficiency is bounded by $\frac{1}{K}$. The fine solver also ensures that at iteration $k$, all time steps up unto $t_k$ are converged. Convergence is defined when the relative state changes are smaller than some threshold $\epsilon_{thr}$:\[\max\left|\frac{\textbf{U}^{k+1} -\textbf{U}^{k}}{\textbf{U}^{k}} \right| < \epsilon_{thr}\]
+
+\subsection{PFASST}
+\label{subsec:intro pfasst}
+Numerous methods have been developed using Parareal as their basis. One of these is the Parallel Full Approximation Scheme in Space and Time \cite{emmett_toward_2012}, PFASST. In stead of accepting any black box time advancers $\textbf{G}$ and $\textbf{F}$, it requires the use of Spectral Deferred Corrections, SDC \cite{dutt_spectral_2000}, for its solvers. 
+\newline
+The integration of the differential equation from subsection \ref{subsec:pint background} can be written using the following Picard equation:\[
+	\textbf{u}(t) = \textbf{u}_0 + \int^t_0 \textbf{f}(\tau,\textbf{u}(\tau))\tau
+\]
+Assuming an approximation of the real solution $\textbf{u}^k(t)$ is given, the error, $\delta^k(t)$, and residual, $\varepsilon^k(t)$, can be defined as:\[
+	\delta^k(t) = \textbf{u}(t) - \textbf{u}^k(t), \quad
+	\varepsilon^k(t) = \textbf{u}_0 + \int^t_0 \textbf{f}(\tau,\textbf{u}^k(\tau))\tau - \textbf{u}^k(t)
+\]
+SDC solves the initial differential equation by injecting $M$ Gaussian nodes in each of the $N$ time sections and then iteratively improving $\textbf{u}^k(t)$. Essentially it solves $N$ IVPs in succession. This leads to continuous approximations, $\textbf{u}^{k}(t)$, on each section after every iteration, where the continuous approximations are always Lagrange polynomials through the Gaussian nodes. The updates are performed by approximating the residual and using this to calculate the error, which then gets subtracted from the approximate solution. 
+The PFASST algorithm can achieve parallel efficiencies bounded by $\frac{K_{SDC}}{K_{Parareal}} $, meaning the ratio between the iterations needed by the SDC solver against the number of Parareal iterations. As the name suggests it also uses the Full Approximation Scheme, FAS \cite{brandt_multi-level_1976}.
+\newline
+Assume an approximation $v^f$ is found on a fine scale, so that $u^f = v^f + e^f$, where $u^f$ solves:
+\[A^f(u^f) = g^f\]
+Taking the coarse problem to be equal to:
+\[A^c(v^c + e^c)  - A^c(v^c) = r^c\]
+where $r^c = I_f^c(r^f) = I_f^c(g^f - A^f(v^f))$ is the residual of the coarsened problem. If $v^c$ is then also defined as the coarsened $v^f$, then the substituted coarse residual can be rewritten as:\[
+A^c(I_f^c(v^f) + e^c) = A^c(I_f^c(v^f)) + I_f^c(g^f - A^f(v^f))\]
+The right hand side can be calculated and the resulting system can be solved to find a solution $u^c$. If the error of this solution is calculated as $e^c = u^c - I_f^c(v^f)$, then the interpolated error can be used to update the fine grid approximate solution $v^f \leftarrow v^f + I_c^f(e^c)$
+\cite{henson_multigrid_2003}
+\newline
+FAS allows PFASST to use the coarse solver to calculate better and more efficient fine SDC solver solutions. 
+
+\subsection{Symplectic Parareal}
+\label{subsec:intro symplectic parareal}
+Certain problems have certain quantities that should be conserved, in these cases a symplectic method is preferred. This can be done using the symplectic Parareal method \cite{bal_symplectic_2008}. If the actual solution $u(t + \Delta t)$ can be found as $f(u(t),t)$, then the original Parareal scheme uses a discretized version $f_{\Delta}$ to perform the following predictor-corrector scheme $f = f_\Delta + (f - f_\Delta)
+$. The symplectic version, instead, assumes the following solution $f = \psi_\Delta \circ f_\Delta$. This is due to the property that the composition of symplectic maps is also symplectic. So if both $f_\Delta$ and $\psi_\Delta$ are symplectic, the Parareal iteration will be too. The function $\psi_\Delta$ is practically implemented through an interpolation scheme, where care is taken to make it symplectic. This is done using \textit{generating functions} \cite{hairer_geometric_2006}.  $\psi_\Delta$ is actually an approximation of the identity function of order one higher than the order of $f_{\Delta}$. Due to this \cite{hairer_geometric_2006}, a generating function can be found of the form $S(\textbf{q}^*, \textbf{p}) = \textbf{q}^* \textbf{p} + \gamma(\textbf{q}^*, \textbf{p})$, where it is assumed that $u(t) = (\textbf{q},\textbf{p})$, $(\textbf{q}^*, \textbf{p}^*) = \psi_\Delta(\textbf{q},\textbf{p})$ and $\gamma$ is a mapping from $\mathbb{R}^{2d}$ to $\mathbb{R}$. If the following equations are satisfied:
+\[\textbf{q}^* = \textbf{q} - \diffp{\gamma}{{\textbf{p}}}(\textbf{q}^*, \textbf{p}), \quad 
+	\textbf{p}^* = \textbf{p} + \diffp{\gamma}{{{\textbf{q}^{*}}}}(\textbf{q}^*, \textbf{p})\]
+Then an interpolation of $\gamma$ through the $N$ points $(f_\Delta(U^1_n),\psi_\Delta(f_\Delta(U^1_n)))$ will be symplectic. If enough points are used, then this interpolation will also serve as an interpolation of $\psi_\Delta$\cite{bal_symplectic_2008}.
+
+\section{Goals and Methodology}
+\label{sec:goals and methodology}
+The main goal of this thesis is the efficient implementation of the energy conserving semi-implicit method on heavily parallelized computer systems. Since a large amount of research has already been done on the parallelization in space of PIC methods, this work will focus on time-parallelism. The found method should conserve the energy as well. Firstly the pure Parareal algorithm will be discussed and tested. Since it is known that Parareal works better for parabolic differential equations, rather than hyperbolic \cite{gander_analysis_2007}, special care has to taken to find good coarse and fine solvers in these cases. Therefore, several coarse solvers will be tested, such as a coarse stepper that only calculates one every $n$ fine time steps and also a subcycled version of the fine solver. Since the main aspect of the ECSIM is the energy conservation, though, just creating a converging Parareal algorithm is not enough. Preferably the energy is conserved in each iteration, making it possible to only look at the convergence of the states. To this end symplectic Parareal will be investigated. Finally it will be attempted to adapt the ECSIM algorithm to use the SDC method. This would enable the use of PFASST leading to even faster convergence of the underlying Parareal algorithm.
+
+
+%%% Local Variables: 
+%%% mode: latex
+%%% TeX-master: "thesis"
+%%% End: 

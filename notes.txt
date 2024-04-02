@@ -1,0 +1,71 @@
+THESIS QUESTIONS:
+- What am I exactly going to research? A combination of ECSIM with parareal/PFASST?
+
+- What are your guidelines for literature study style/content/...?
+
+- Guidelines for thesis style/content/...?
+	subcycling; jacon, gpu using
+
+- What timeline do you foresee
+	
+- Main goals vs secundary goals (need to have vs nice to have)
+	need: working with subcycling
+	nice: gpus
+
+- problem statement, initial results, goals second semester
+
+ECSIM QUESTIONS:
+- Shouldn't there be a + in the alpha matrix instead of -? -> ja
+
+- How come the energy conservation is checked by checking difference of energydiff, shouldn't you just check that the energy diff ~0 -> only guaranteed conservation each step?
+
+- What in literatuurstudie -> introduction/progress report
+
+- make tolerance for energy and states (1e-5, 1e-11) -> done
+
+- check difference in difference -> is not good
+
+- landau damping/ diffusion dominated problem -> difficult
+
+- should you stop calculating steps just cause they hit arbitrary threshold or only when hitting machine precision?
+
+- ask giovanni for symplectic integrators/ parareal symplectic, with plot 2 -> did not know anything and symplectic is not viable anyways
+
+THESIS POINTS
+- fine and parareal do not converge to same result for hyperbolic choatic example (only after long period -> correct implementation)
+- energy conservation
+- thresholds = 1e-8, 1e-12, 1e-16
+- multiple symplectic integrators and parareal integrators -> not done
+- split errors on x, v, E, B since they can all have way different normalisations
+- also you are using equations with normalised units see ipic3D
+- thesis is foundation for HPC gpus, but no implementation given
+- coarse solvers : different time step, subcycling, different gridsize/particles
+- there is no reason to approximate fine solution to 1e-16 since this is still just an approximation anyways
+- why subcycling: use cores dedicated for parallelising fine in coarse as wel instead of idling
+
+
+PLOTS:
+- fine and parareal converge to same result (over small timeframes)
+- errors on states to the timerange for different k (legend)
+- 
+
+Simulate long time on a lot of cores
+no distributed memory
+first gpu -> more cores -> more parameter studies
+
+TASKS:
+- landau damping (done?)
+- find energy conservation examples (why important) (high-fidelity simulations: Dense Z-pinch, fusion(ICF))
+- look at convergence for total error of state and separated (done, E has large relative errors, but x errors are larger in absolute value -> E errors get divided by larger number if joined)
+- check divergence of B, plot divergence of B for time evolution ( 0: but is not actually useful since in 1D the x-axis is only relevant axis, but remains the same during simulation)
+- test with fewer particles (coarsening: choose from [min,max]) 1:2
+- test with coarser grid 1:2 (128:256)
+- (try GMRES) (works i guess)
+- try for fewer cores 4,8,12
+- try only calculating position, velocity during course and calculate everything during fine (does not work, electric and magnetic fields are normally the laggards in terms of error)
+- get the results for 2, 5 and 10 subcycling steps
+
+- Vandewalle questions: what i did, speedups, #iterations, does this sound reasonable, any suggestion
+
+- overleaf
+
