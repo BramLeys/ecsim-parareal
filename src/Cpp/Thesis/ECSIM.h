@@ -397,9 +397,8 @@ public:
         Eigen::ArrayXXi ix2(this->Np, this->Nsub);
 
         Eigen::Array3Xd B(3, this->Nx);
-        Eigen::Array3Xd Bp(3, this->Np);
         std::vector<Eigen::Matrix3d> alphap(this->Np * this->Nsub); // column major
-        Eigen::Array3Xd vphat(3,this->Np);
+        //Eigen::Array3Xd vphat(3,this->Np);
         Eigen::Array3Xd J0(Bc.rows(), Bc.cols());
 
         std::vector<std::vector<Triplet<double>>> tripletListM(9,std::vector<Triplet<double>>(this->Np * 4 * this->Nsub));
@@ -430,15 +429,15 @@ public:
         std::vector<Triplet<double>> tripletListMaxwell;
 
         double beta = this->qom * this->dt / 2 / this->Nsub;
-        double sx;
-        double sy;
-        double sz;
 
         int Nx = this->Nx;
         double dx = this->dx;
 
         auto oldE = this->Energy(xn);
 
+        ArrayXXd cycle_steps(x_view.rows(),this->Nsub);
+        std::vector<Array3Xd> Bp(this->Nsub, Array3Xd(3, this->Np));
+        std::vector<Array3Xd> vphat(this->Nsub, Array3Xd(3, this->Np));
 
         for (size_t step = 0; step < yn.cols() - 1; step++) {
             auto tic = std::chrono::high_resolution_clock::now();
@@ -447,29 +446,31 @@ public:
             B.col(0) = 0.5 * (Bc.col(B.cols() - 1) + Bc.col(0));
 
             J0.setZero();
-            for (size_t itsub = 0; itsub < this->Nsub; itsub++){
-                x_view += vp.row(0) * this->dt / this->Nsub;
+            #pragma omp parallel for
+            for (int itsub = 0; itsub < this->Nsub; itsub++){
+                cycle_steps.col(itsub) = x_view + vp.row(0).transpose() * (itsub + 1) * this->dt / this->Nsub;
+                //x_view += vp.row(0) * itsub * this->dt / this->Nsub;
                 // Position is periodic with period L (parareal can go out of bounds between solves)
-                x_view = mod(x_view, this->L);
+                cycle_steps.col(itsub) = mod(cycle_steps.col(itsub), this->L);
 
-                ix.col(itsub) = (x_view / dx).floor().cast<int>(); // cell of the particle, first cell is cell 0, first node is 0 last node this->Nx
-                frac1.col(itsub) = 1 - (x_view / this->dx - ix.col(itsub).cast<double>()); // W_{pg}
+                ix.col(itsub) = (cycle_steps.col(itsub) / dx).floor().cast<int>(); // cell of the particle, first cell is cell 0, first node is 0 last node this->Nx
+                frac1.col(itsub) = 1 - (cycle_steps.col(itsub) / this->dx - ix.col(itsub).cast<double>()); // W_{pg}
                 ix2.col(itsub) = mod((ix.col(itsub) + 1), Nx).cast<int>(); // second cell of influence due to extended local support of first order b-spline
 
                 for (int ip = 0; ip < this->Np; ip++) {
-                    Bp.col(ip) = B.col(ix(ip,itsub)) * frac1(ip, itsub) + B.col(ix2(ip, itsub)) * (1 - frac1(ip, itsub));
-                    sx = Bp(0, ip) * beta;
-                    sy = Bp(1, ip) * beta;
-                    sz = Bp(2, ip) * beta;
+                    Bp[itsub].col(ip) = B.col(ix(ip, itsub)) * frac1(ip, itsub) + B.col(ix2(ip, itsub)) * (1 - frac1(ip, itsub));
+                    double sx = Bp[itsub](0, ip) * beta;
+                    double sy = Bp[itsub](1, ip) * beta;
+                    double sz = Bp[itsub](2, ip) * beta;
 
                     alphap[itsub * this->Np + ip].col(0) << 1 + sx * sx, -sz + sx * sy, sx* sz + sy;
                     alphap[itsub * this->Np + ip].col(1) << sz + sx * sy, 1 + sy * sy, -sx + sy * sz;
                     alphap[itsub * this->Np + ip].col(2) << sx * sz - sy, sx + sy * sz, 1 + sz * sz;
-                    alphap[itsub * this->Np + ip].array() /= 1 + (Bp.col(ip) * (beta)).pow(2).sum();
+                    alphap[itsub * this->Np + ip].array() /= 1 + (Bp[itsub].col(ip) * (beta)).pow(2).sum();
 
-                    vphat.col(ip) = alphap[itsub * this->Np + ip] * vp.col(ip).matrix();
-                    J0.col(ix(ip, itsub)) += frac1(ip, itsub) * this->qp(ip) * vphat.col(ip);
-                    J0.col(ix2(ip, itsub)) += (1 - frac1(ip, itsub)) * this->qp(ip) * vphat.col(ip);
+                    vphat[itsub].col(ip) = alphap[itsub * this->Np + ip] * vp.col(ip).matrix();
+                    //J0.col(ix(ip, itsub)) += frac1(ip, itsub) * this->qp(ip) * vphat[itsub].col(ip);
+                    //J0.col(ix2(ip, itsub)) += (1 - frac1(ip, itsub)) * this->qp(ip) * vphat[itsub].col(ip);
 
                 }
                 for (int j = 0; j < 3; j++) {
@@ -483,6 +484,15 @@ public:
                     }
                 }
             }
+            for (int itsub = 0; itsub < this->Nsub; itsub++) {
+                for (int ip = 0; ip < this->Np; ip++) {
+                    J0.col(ix(ip, itsub)) += frac1(ip, itsub) * this->qp(ip) * vphat[itsub].col(ip);
+                    J0.col(ix2(ip, itsub)) += (1 - frac1(ip, itsub)) * this->qp(ip) * vphat[itsub].col(ip);
+                }
+            }
+
+            x_view += vp.row(0) * this->dt;
+            x_view = mod(x_view, this->L);
 
             J0 /= this->Vx * this->Nsub;
             // Setting Ms in columnmajor ordering -> [M0_0, M1_0, M2_0, M0_1, M1_1, M2_1, ...]

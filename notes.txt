@@ -65,7 +65,3 @@ TASKS:
 - try only calculating position, velocity during course and calculate everything during fine (does not work, electric and magnetic fields are normally the laggards in terms of error)
 - get the results for 2, 5 and 10 subcycling steps
 
-- Vandewalle questions: what i did, speedups, #iterations, does this sound reasonable, any suggestion
-
-- overleaf
-

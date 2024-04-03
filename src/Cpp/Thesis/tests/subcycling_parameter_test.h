@@ -13,43 +13,42 @@
 using namespace Eigen;
 
 int subcycling_parameter_test(int argc, char* argv[]) {
-    // Randomize
-    srand((unsigned int)time(0));
 
-    //Initialize the problem (setting initial state)
-    int Nx = 128; // number of grid cells
+    int Nx = 16; // number of grid cells
     double L = 2 * EIGEN_PI; // Size of position space
     int Np = 10000; // number of particles
-    ArrayXd xp(Np), vp(Np), E0(Nx), Bc(Nx), qp(Np);
 
-    TestProblems::SetTwoStream(xp, vp, E0, Bc, qp, Nx, Np, L);
 
-    // Define the solvers
+    ArrayXd xp(Np), qp(Np);
+    Array3Xd vp(3, Np), E0(3, Nx), Bc(3, Nx);
+
+    TestProblems::SetTransverse(xp, vp, E0, Bc, qp, Nx, Np, L);
+
     double coarse_dt = 1e-2;
     double fine_dt = 1e-4;
     int num_thr = 12;
     double T = 12 * coarse_dt;
-    int Nsub = 10;
+    double thresh = 1e-8;
 
     for (int i = 1; i < argc; ++i) {
         std::string arg = argv[i];
         if (arg == "-f" && i + 1 < argc) {
             fine_dt = std::stod(argv[++i]);
         }
+        else if (arg == "-c" && i + 1 < argc) {
+            coarse_dt = std::stod(argv[++i]);
+        }
         else if (arg == "-n" && i + 1 < argc) {
             num_thr = std::stoi(argv[++i]);
-        }
-        else if (arg == "-s" && i + 1 < argc) {
-            Nsub = std::stoi(argv[++i]);
         }
         else if (arg == "-t" && i + 1 < argc) {
             T = std::stod(argv[++i]);
         }
-        else if (arg == "-c" && i + 1 < argc) {
-            coarse_dt = std::stod(argv[++i]);
+        else if (arg == "-tr" && i + 1 < argc) {
+            thresh = std::stod(argv[++i]);
         }
         else {
-            std::cerr << "Usage: " << argv[0] << " -f <value> -n <value> -t <value> -c <value> -s <value>" << std::endl;
+            std::cerr << "Usage: " << argv[0] << " -f <fine timestep> -n <number of threads> -t <time interval [0,t]> -c <coarse timestep> -tr <parareal threshold>" << std::endl;
             return 1;
         }
     }
@@ -67,20 +66,22 @@ int subcycling_parameter_test(int argc, char* argv[]) {
         }
 
     }  /* All threads join master thread and disband */
-
-    double wp_P = 1e-8;
-    auto fine_solver = ECSIM<1, 1>(L, Np, Nx, 1, fine_dt, qp);
-    auto coarse_solver = ECSIM<1, 1>(L, Np, Nx, 1, coarse_dt, qp);
-    auto parareal_solver = Parareal<decltype(fine_solver), decltype(coarse_solver)>(fine_solver, coarse_solver, wp_P, 50, num_thr);
-    int NT = (int)(T / coarse_dt); // number of time steps
+    auto coarse_solver = ECSIM<1, 3>(L, Np, Nx, 1, coarse_dt, qp);
+    auto fine_solver = ECSIM<1, 3>(L, Np, Nx, 1, fine_dt, qp);
+    auto para_solver = Parareal(fine_solver, coarse_solver, thresh);
+    int NT = T / coarse_dt;
     VectorXd ts = VectorXd::LinSpaced(NT + 1, 0, T);
+
+    VectorXd Xn(4 * Np + 6 * Nx);
+    Xn << xp, Map<const ArrayXd>(vp.data(), vp.size()), Map<const ArrayXd>(E0.data(), E0.size()), Map<const ArrayXd>(Bc.data(), Bc.size());
+    auto Eold = fine_solver.Energy(Xn);
+
 
     // Actually perform the simulations
     // SERIAL
-    MatrixXd Xn_fine(2 * Np + 2 * Nx, NT + 1);
-    Xn_fine.col(0) << xp, vp, E0, Bc;
+    MatrixXd Xn_fine(4 * Np + 6 * Nx, NT + 1);
+    Xn_fine.col(0) << Xn;
     VectorXd Ediff_fine(NT);
-    auto Eold = fine_solver.Energy(Xn_fine.col(0));
 
     auto tic = std::chrono::high_resolution_clock::now();
     for (int i = 0; i < NT; i++) {
@@ -89,40 +90,41 @@ int subcycling_parameter_test(int argc, char* argv[]) {
     }
     auto toc = std::chrono::high_resolution_clock::now();
     double fine_time = std::chrono::duration_cast<std::chrono::milliseconds>(toc - tic).count();
+    PRINT("SERIAL TIME = ", fine_time, "ms");
 
-    // PARAREAL without subcycling
-    MatrixXd Xn_para(2 * Np + 2 * Nx, NT + 1);
-    Xn_para.col(0) << xp, vp, E0, Bc;
+    MatrixXd Xn_para(4 * Np + 6 * Nx, NT + 1);
+    Xn_para.col(0) <<  Xn;
     VectorXd Ediff_para(NT);
 
-    tic = std::chrono::high_resolution_clock::now();
-    parareal_solver.Solve(Xn_para, ts);
-    toc = std::chrono::high_resolution_clock::now();
-    double para_time = std::chrono::duration_cast<std::chrono::milliseconds>(toc - tic).count();
-    for (int i = 0; i < NT; i++) {
-        Ediff_para(i) = abs((fine_solver.Energy(Xn_para.col(i + 1)) - Eold).sum()) / abs(Eold.sum());
+    int refinements = 10;
+    MatrixXd speedup(refinements, 7);
+    for (int j = 0; j < refinements; j++) {
+        int nsub = j + 1;
+        PRINT("subcycles ", nsub);
+        coarse_solver.Set_Nsub(nsub);
+
+        tic = std::chrono::high_resolution_clock::now();
+        int k = para_solver.Solve(Xn_para, ts);
+        toc = std::chrono::high_resolution_clock::now();
+        double para_time = std::chrono::duration_cast<std::chrono::milliseconds>(toc - tic).count();
+        PRINT("PARAREAL TIME =", para_time, "ms");
+        for (int i = 0; i < NT; i++) {
+            Ediff_para(i) = abs((fine_solver.Energy(Xn_para.col(i + 1)) - Eold).sum()) / abs(Eold.sum());
+        }
+        //PRINT("Finished serial in", std::chrono::duration_cast<std::chrono::milliseconds>(toc - tic).count(), "ms");
+        //PRINT("Finished parareal in", std::chrono::duration_cast<std::chrono::milliseconds>(toc - tic).count(), "ms");
+        speedup(j, 0) = nsub;
+        speedup(j, 1) = fine_time;
+        speedup(j, 2) = para_time;
+        speedup(j, 3) = k;
+        speedup(j, 4) = fine_solver.Error(Xn_fine, Xn_para).reshaped(4 * Xn_fine.cols(), 1).maxCoeff();
+        speedup(j, 5) = Ediff_para.maxCoeff();
+        speedup(j, 6) = fine_time / para_time;
+        PRINT("serial time / parareal time = ", speedup(j, 6));
+        PRINT("Max relative 2-norm difference between parareal and serial =", speedup(j, 4));
+        PRINT("Max relative energy difference against initial state for parareal =", speedup(j, 5));
+        save("Parareal_speedup_subcycling.txt", speedup);
     }
-    PRINT("Parareal without subcycling takes", para_time / fine_time, "as long as the serial version");
-    PRINT("Max relative energy difference against initial state for parareal without subcycling =", Ediff_para.maxCoeff());
-    PRINT("Relative 2-norm difference between parareal without subcycling and serial =", (Xn_fine - Xn_para).norm() / Xn_fine.norm());
-
-    // PARAREAL with subcycling
-    MatrixXd Xn_para_sub(2 * Np + 2 * Nx, NT + 1);
-    Xn_para_sub.col(0) << xp, vp, E0, Bc;
-    VectorXd Ediff_para_sub(NT);
-    coarse_solver.Set_Nsub(Nsub);
-
-    tic = std::chrono::high_resolution_clock::now();
-    parareal_solver.Solve(Xn_para_sub, ts);
-    toc = std::chrono::high_resolution_clock::now();
-    double para_sub_time = std::chrono::duration_cast<std::chrono::milliseconds>(toc - tic).count();
-    for (int i = 0; i < NT; i++) {
-        Ediff_para_sub(i) = abs((fine_solver.Energy(Xn_para_sub.col(i + 1)) - Eold).sum()) / abs(Eold.sum());
-    }
-    PRINT("Parareal with subcycling takes", para_sub_time / fine_time, "as long as the serial version");
-    PRINT("Max relative energy difference against initial state for parareal with subcycling =", Ediff_para_sub.maxCoeff());
-    PRINT("Relative 2-norm difference between parareal with subcycling and serial =", (Xn_fine - Xn_para_sub).norm() / Xn_fine.norm());
-
     return 0;
 }
 

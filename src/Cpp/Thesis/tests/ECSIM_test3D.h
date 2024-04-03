@@ -22,7 +22,7 @@ int ECSIM_3D_test(int argc, char* argv[]) {
     TestProblems::SetTransverse(xp, vp, E0, Bc, qp, Nx, Np, L);
 
     double coarse_dt = 1e-2;
-    double fine_dt = 1e-3;
+    double fine_dt = 1e-4;
     int num_thr = 12;
     double T = 12 * coarse_dt;
     int Nsub = 10;
