@@ -11,21 +11,15 @@
 using namespace Eigen;
 
 int ECSIM_3D_test(int argc, char* argv[]) {
-    int Nx = 128; // number of grid cells
     double L = 2 * EIGEN_PI; // Size of position space
     int Np = 10000; // number of particles
-
-    
-    ArrayXd xp(Np), qp(Np);
-    Array3Xd vp(3, Np), E0(3,Nx), Bc(3,Nx);
-
-    TestProblems::SetTransverse(xp, vp, E0, Bc, qp, Nx, Np, L);
-
+    int Nx = 64; // number of grid cells
+    int fine_Nx = Nx;
     double coarse_dt = 1e-2;
-    double fine_dt = 1e-4;
+    double fine_dt = 1e-2;
     int num_thr = 12;
     double T = 12 * coarse_dt;
-    int Nsub = 10;
+    int Nsub = 1;
     double thresh = 1e-8;
 
     for (int i = 1; i < argc; ++i) {
@@ -35,6 +29,12 @@ int ECSIM_3D_test(int argc, char* argv[]) {
         }
         else if (arg == "-c" && i + 1 < argc) {
             coarse_dt = std::stod(argv[++i]);
+        }
+        else if (arg == "-nxc" && i + 1 < argc) {
+            Nx = std::stoi(argv[++i]);
+        }
+        else if (arg == "-nxf" && i + 1 < argc) {
+            fine_Nx = std::stoi(argv[++i]);
         }
         else if (arg == "-n" && i + 1 < argc) {
             num_thr = std::stoi(argv[++i]);
@@ -54,8 +54,14 @@ int ECSIM_3D_test(int argc, char* argv[]) {
         }
     }
     PRINT("Simulating on", num_thr, "cores with time interval = [0, ", T, "], coarse timestep =", coarse_dt, ", fine timestep =", fine_dt, "and", Nsub,"subcycles for the coarse solver.");
+    
+    ArrayXd xp(Np), qp(Np);
+    Array3Xd vp(3, Np), E0(3,Nx), Bc(3,Nx);
+
+    TestProblems::SetTransverse(xp, vp, E0, Bc, qp, Nx, Np, L);
+
     auto coarse_solver = ECSIM<1, 3>(L, Np, Nx, Nsub, coarse_dt, qp);
-    auto fine_solver = ECSIM<1, 3>(L, Np, Nx, 1, fine_dt, qp);
+    auto fine_solver = ECSIM<1, 3>(L, Np, fine_Nx, 1, fine_dt, qp);
     auto para_solver = Parareal(fine_solver, coarse_solver,thresh);
     int NT = T / coarse_dt;
 
@@ -63,16 +69,19 @@ int ECSIM_3D_test(int argc, char* argv[]) {
     Xn.col(0) << xp, Map<const ArrayXd>(vp.data(), vp.size()), Map<const ArrayXd>(E0.data(), E0.size()), Map<const ArrayXd>(Bc.data(), Bc.size());
     //coarse_solver.Step(Xn, 0, 10*coarse_dt, Xn); // Get into regime for E and B
 
-    PRINT("Initial max divergence", abs(fine_solver.Divergence(Xn.col(0))).maxCoeff());
+    PRINT("Initial max divergence", abs(coarse_solver.Divergence(Xn.col(0))).maxCoeff());
 
-    auto Eold = fine_solver.Energy(Xn);
-    VectorXd Yn(4 * Np + 6 * Nx);
+    auto Eold = coarse_solver.Energy(Xn);
+    VectorXd Yn(4 * Np + 6 * fine_Nx), fine_Xn(4 * Np + 6 * fine_Nx);
+    VectorXd coarse_Yn(4 * Np + 6 * Nx);
     auto tic = std::chrono::high_resolution_clock::now();
-    fine_solver.Step(Xn, 0, T, Yn);
+    fine_solver.Refine(Xn, coarse_solver, fine_Xn);
+    fine_solver.Step(fine_Xn, 0, T, Yn);
+    coarse_solver.Coarsen(Yn, fine_solver, coarse_Yn);
     auto toc = std::chrono::high_resolution_clock::now();
     double serial_time = std::chrono::duration_cast<std::chrono::milliseconds>(toc - tic).count();
     PRINT("SERIAL simulation takes", serial_time, "ms");
-    PRINT("Serial energy difference between beginning and end", abs((fine_solver.Energy(Yn) - Eold).sum()) / abs(Eold.sum()));
+    PRINT("Serial energy difference between beginning and end", abs((coarse_solver.Energy(coarse_Yn) - Eold).sum()) / abs(Eold.sum()));
 
     PRINT("------PARAREAL------");
     VectorXd ts = VectorXd::LinSpaced(NT + 1, 0, T);
@@ -87,8 +96,8 @@ int ECSIM_3D_test(int argc, char* argv[]) {
     double para_time = std::chrono::duration_cast<std::chrono::milliseconds>(toc - tic).count();
     PRINT("PARAREAL simulation takes", para_time, "ms");
     PRINT("Parareal without subcycling takes", para_time / serial_time, "as long as the serial version");
-    PRINT("Energy difference parareal", abs((fine_solver.Energy(Xn_para.col(NT)) - Eold).sum()) / abs(Eold.sum()));
-    PRINT("Error in states of parareal compared to serial:", fine_solver.Error(Yn, Xn_para.col(NT)));
+    PRINT("Energy difference parareal", abs((coarse_solver.Energy(Xn_para.col(NT)) - Eold).sum()) / abs(Eold.sum()));
+    PRINT("Error in states of parareal compared to serial:", coarse_solver.Error(coarse_Yn, Xn_para.col(NT)));
 
     //auto temp = fine_solver.Divergence(Xn_para);
     //for (int i = 0; i < temp.cols();i++) {

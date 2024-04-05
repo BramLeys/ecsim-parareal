@@ -194,14 +194,20 @@ public:
         Vx = pow(dx, xdim);
     }
 
-    inline double Get_dt() { return dt; }
+    inline double Get_dt() const { return dt; }
     inline void Set_dt(double timestep) { dt = timestep; }
 
-    inline int Get_Nsub() { return Nsub; }
+    inline int Get_Nsub() const { return Nsub; }
     inline void Set_Nsub(int subcycles) { Nsub = subcycles; }
 
-    inline int Get_vdim() { return vdim; }
-    inline int Get_xdim() { return xdim; }
+    inline int Get_Nx() const { return Nx; }
+    inline void Set_Nx(int cells) { Nx = cells; }
+
+    inline int Get_Np() const { return Np; }
+    inline void Set_Np(int particles) { Np = particles; }
+
+    inline int Get_vdim() const { return vdim; }
+    inline int Get_xdim() const { return xdim; }
 
     inline Eigen::Array3d Energy(const Eigen::Ref<const MatrixXd> Xn) const {
         Eigen::Map < const Array<double, vdim, -1>> vp(Xn.data() + xdim * Np, vdim, Np);
@@ -250,6 +256,91 @@ public:
 
         }
         return errors;
+    }
+
+    // Only allows for spatial refinement
+    void Refine(const Eigen::Ref<const MatrixXd> coarse_solution, const ECSIMBase& coarse_solver, Eigen::Ref<MatrixXd> fine_solution) const {
+        int coarse_Nx = coarse_solver.Get_Nx();
+        int fine_Nx = Get_Nx();
+        int coarse_Np = coarse_solver.Get_Np();
+        int fine_Np = Get_Np();
+        assert(coarse_solution.rows() == (xdim + vdim) * coarse_Np + 2 * vdim * coarse_Nx);
+        assert(fine_solution.rows() == (xdim + vdim) * fine_Np + 2 * vdim * fine_Nx);
+        assert(fine_solution.cols() == coarse_solution.cols());
+        if ((fine_Nx == coarse_Nx) && (fine_Np == coarse_Np)) {
+            fine_solution = coarse_solution;
+            return;
+        }
+        int factor = round((double)fine_Nx / (double)coarse_Nx);
+
+        ArrayXd ratios = ArrayXd::LinSpaced(factor + 1, 0, 1);
+        for (size_t step = 0; step < fine_solution.cols(); step++) {
+            ArrayXd x_view = coarse_solution.col(step).head(coarse_Np);
+            Eigen::Map <const Array<double, 3, -1>> vp(coarse_solution.col(step).data() + xdim * coarse_Np, vdim, coarse_Np);
+            Eigen::Map <const Array<double, 3, -1>> E0(coarse_solution.col(step).data() + (xdim + vdim) * coarse_Np, vdim, coarse_Nx);
+            Eigen::Map <const Array<double, 3, -1>> Bc(coarse_solution.col(step).data() + xdim * coarse_Np + (coarse_Np + coarse_Nx) * vdim, vdim, coarse_Nx);
+
+            fine_solution.col(step)(seqN(0, (xdim + vdim) * coarse_Np)) << x_view, Map<const ArrayXd>(vp.data(), vp.size());
+
+            for (int cell = 0; cell < coarse_Nx; cell++) {
+                for (int i = 0; i < factor; i++) {
+                    //ArrayXd tempE = E0.col(cell);
+                    //ArrayXd tempE1 = E0.col(cell + 1);
+                    //ArrayXd temp = (1 - ratios(i)) * E0.col(cell) + ratios(i) * E0.col(cell + 1);
+                    fine_solution.col(step)(seqN((xdim + vdim) * fine_Np + (cell * factor + i) * vdim, vdim)) = (1 - ratios(i)) * E0.col(cell) + ratios(i) * E0.col((cell + 1)%coarse_Nx);
+                    //ArrayXd res = fine_solution.col(step)(seqN((xdim + vdim) * fine_Np + (cell * factor + i) * vdim, vdim));
+
+                    //ArrayXd tempB = Bc.col(cell);
+                    //ArrayXd tempB1 = Bc.col(cell + 1);
+                    //ArrayXd temp1 = (1 - ratios(i)) * Bc.col(cell) + ratios(i) * Bc.col(cell + 1);
+                    fine_solution.col(step)(seqN(xdim * fine_Np + (fine_Np + fine_Nx) * vdim + (cell * factor + i) * vdim, vdim)) = (1 - ratios(i)) * Bc.col(cell) + ratios(i) * Bc.col((cell + 1) % coarse_Nx);
+                    //ArrayXd res1 = fine_solution.col(step)(seqN(xdim * fine_Np + (fine_Np + fine_Nx) * vdim + (cell * factor + i) * vdim, vdim));
+                }
+            }
+        }
+    }
+
+    // Only allows for spatial coarsening
+    void Coarsen(const Eigen::Ref<const MatrixXd> fine_solution, const ECSIMBase& fine_solver, Eigen::Ref<MatrixXd> coarse_solution) const {
+        int coarse_Nx = Get_Nx();
+        int fine_Nx = fine_solver.Get_Nx();
+        int coarse_Np = Get_Np();
+        int fine_Np = fine_solver.Get_Np();
+        assert(coarse_solution.rows() == (xdim + vdim) * coarse_Np + 2 * vdim * coarse_Nx);
+        assert(fine_solution.rows() == (xdim + vdim) * fine_Np + 2 * vdim * fine_Nx);
+        assert(fine_solution.cols() == coarse_solution.cols());
+        if ((fine_Nx == coarse_Nx) && (fine_Np == coarse_Np)) {
+            coarse_solution = fine_solution;
+            return;
+        }
+        int factor = round((double)fine_Nx / (double)coarse_Nx);
+
+        double ratio = 1./factor;
+        for (size_t step = 0; step < fine_solution.cols(); step++) {
+            ArrayXd x_view = fine_solution.col(step).head(fine_Np);
+            Eigen::Map <const Array<double, 3, -1>> vp(fine_solution.col(step).data() + xdim * fine_Np, vdim, fine_Np);
+            Eigen::Map <const Array<double, 3, -1>> E0(fine_solution.col(step).data() + (xdim + vdim) * fine_Np, vdim, fine_Nx);
+            Eigen::Map <const Array<double, 3, -1>> Bc(fine_solution.col(step).data() + xdim * fine_Np + (fine_Np + fine_Nx) * vdim, vdim, fine_Nx);
+
+            coarse_solution.col(step)(seqN(0, (xdim + vdim) * coarse_Np)) << x_view, Map<const ArrayXd>(vp.data(), vp.size());
+
+            for (int i = 0; i < coarse_Nx; i++) {
+                int cell = factor * i;
+                //ArrayXXd tempE = E0.middleCols(cell - factor + 1, 2 * factor - 1);
+                //ArrayXd temp = E0.middleCols(cell - factor + 1, 2 * factor - 1).rowwise().mean();
+                //coarse_solution.col(step)(seqN((xdim + vdim) * coarse_Np + i * vdim, vdim)) = E0.middleCols(cell-factor+1,2*factor-1).rowwise().mean();
+                //ArrayXd res = coarse_solution.col(step)(seqN((xdim + vdim) * coarse_Np + i * vdim, vdim));
+
+                coarse_solution.col(step)(seqN((xdim + vdim) * coarse_Np + i * vdim, vdim)) = E0.col(cell);
+
+                coarse_solution.col(step)(seqN(xdim * coarse_Np + (coarse_Np + coarse_Nx) * vdim + i * vdim, vdim)) = Bc.col(cell);
+
+                //ArrayXXd tempB = Bc.middleCols(cell - factor + 1, 2 * factor - 1);
+                //ArrayXd temp2 = Bc.middleCols(cell - factor + 1, 2 * factor - 1).rowwise().mean();
+                //coarse_solution.col(step)(seqN(xdim * coarse_Np + (coarse_Np + coarse_Nx) * vdim + i * vdim, vdim)) = Bc.middleCols(cell - factor + 1, 2 * factor - 1).rowwise().mean();
+                //ArrayXd res2 = coarse_solution.col(step)(seqN(xdim * coarse_Np + (coarse_Np + coarse_Nx) * vdim + i * vdim, vdim));
+            }
+        }
     }
 
 };
@@ -377,7 +468,7 @@ public:
     inline void Step(const Eigen::Ref<const MatrixXd> xn, double t0, double t1, Eigen::Ref<MatrixXd> yn) const {
         int nb_steps = round(abs(t1 - t0) / this->dt);
         MatrixXd steps(yn.rows(), nb_steps + 1);
-        Solve(xn, t0, t1, steps);
+        this->Solve(xn, t0, t1, steps);
         yn = steps.col(nb_steps);
         return;
     }
@@ -668,6 +759,5 @@ public:
     }
 
 };
-
 
 #endif

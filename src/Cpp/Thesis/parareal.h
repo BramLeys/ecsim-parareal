@@ -28,10 +28,13 @@ public:
 		for (Eigen::Index i = 0; i < T.size()-1; i++) {
 			coarse.Step(X.col(i), T(i),T(i+1), X.col(i+ 1));
 		}
-		Eigen::MatrixXd fine_x(X.rows(), T.size() - 1), coarse_x(X.rows(), T.size() - 1), new_coarse_x( X.rows(), 1);
+		int fine_dim = (fine.Get_xdim() + fine.Get_vdim()) * fine.Get_Np() + (2 * fine.Get_vdim()) * fine.Get_Nx();
+		int coarse_dim = (coarse.Get_xdim() + coarse.Get_vdim()) * coarse.Get_Np() + (2 * coarse.Get_vdim()) * coarse.Get_Nx();
+		Eigen::MatrixXd fine_x(fine_dim, T.size() - 1), coarse_x(coarse_dim, T.size() - 1), new_coarse_x(coarse_dim, 1);
+		Eigen::MatrixXd coarsened_fine_x(coarse_dim, 1);
 		coarse_x = X.rightCols(coarse_x.cols());
 
-		auto Etot0 = fine.Energy(X.col(0)).sum();
+		auto Etot0 = coarse.Energy(X.col(0)).sum();
 
 		// keeps track of parareal iteration 
 		int k = 0;
@@ -47,28 +50,31 @@ public:
 			//auto tic = std::chrono::high_resolution_clock::now();
 			#pragma omp parallel for num_threads(num_threads)
 			for (int i = converged_until; i < T.size() - 1; i++) {
-				fine.Step(X.col(i), T(i), T(i + 1), fine_x.col(i));
+				Eigen::MatrixXd refined_coarse_x(fine_dim, 1);
+				fine.Refine(X.col(i), coarse, refined_coarse_x);
+				fine.Step(refined_coarse_x, T(i), T(i + 1), fine_x.col(i));
 			}
 			//auto toc = std::chrono::high_resolution_clock::now();
 			//PRINT("Finished parallel section in ", std::chrono::duration_cast<std::chrono::milliseconds>(toc - tic).count(), "ms");
 			previous_X = X;
 			for (Eigen::Index i = converged_until; i < T.size() - 1; i++) {
 				coarse.Step(X.col(i), T(i), T(i + 1), new_coarse_x);
-				X.col(i + 1) = new_coarse_x + fine_x.col(i) - coarse_x.col(i);
+				coarse.Coarsen(fine_x.col(i), fine, coarsened_fine_x);
+				X.col(i + 1) = coarsened_fine_x + new_coarse_x - coarse_x.col(i);
 				coarse_x.col(i) = new_coarse_x;
-				if ((converged_until == i) && (fine.Error(X.col(i + 1), previous_X.col(i + 1)).maxCoeff() <= thresh)) {
+				if ((converged_until == i) && (coarse.Error(X.col(i + 1), previous_X.col(i + 1)).maxCoeff() <= thresh)) {
 					converged_until++;
 				}
 				//if ((converged_until == i) && ((X.col(i + 1) - previous_X.col(i+1)).norm() <= thresh*X.col(i+1).norm())) {
 				//	converged_until++;
 				//}
 				diffs(k-1, 0) = k;
-				diffs.row(k-1).rightCols(4) = diffs.row(k - 1).rightCols(4).max(fine.Error(X.col(i + 1), previous_X.col(i + 1)).transpose());
+				diffs.row(k-1).rightCols(4) = diffs.row(k - 1).rightCols(4).max(coarse.Error(X.col(i + 1), previous_X.col(i + 1)).transpose());
 			}
 			//save("Parareal_states_iteration_" + std::to_string(k) + ".txt", X);
 			auto paratoc = std::chrono::high_resolution_clock::now();
 			PRINT("For iteration",k,": time taken =", std::chrono::duration_cast<std::chrono::milliseconds>(paratoc - paratic).count(),"ms,	max state change = ", diffs.row(k - 1).rightCols(4).maxCoeff(),"	and time steps until and including", converged_until, "have converged");
-			PRINT("Energy conservation first and last step = ", abs(fine.Energy(X.col(X.cols() - 1)).sum() - Etot0) / Etot0);
+			PRINT("Energy conservation first and last step = ", abs(coarse.Energy(X.col(X.cols() - 1)).sum() - Etot0) / Etot0);
 
 		}
 		PRINT("Parareal took", k, "iterations.");

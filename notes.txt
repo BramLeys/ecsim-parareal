@@ -53,6 +53,10 @@ Simulate long time on a lot of cores
 no distributed memory
 first gpu -> more cores -> more parameter studies
 
+QUESTIONS
+- How to incorporate the final (or first cell), it should also get coarsened or refined but is not done if you go from e.g 64 -> 127
+- How to coarsen: take one value or average over multiple
+
 TASKS:
 - landau damping (done?)
 - find energy conservation examples (why important) (high-fidelity simulations: Dense Z-pinch, fusion(ICF))
@@ -64,4 +68,5 @@ TASKS:
 - try for fewer cores 4,8,12
 - try only calculating position, velocity during course and calculate everything during fine (does not work, electric and magnetic fields are normally the laggards in terms of error)
 - get the results for 2, 5 and 10 subcycling steps
+
 
