@@ -24,8 +24,8 @@ int time_frame_parameter_test(int argc, char* argv[]) {
     double coarse_dt = 1e-2;
     double fine_dt = coarse_dt / 100;
     double wp_P = 1e-8;
-    auto fine_solver = ECSIM<1, 1>(L, Np, Nx, Nsub, fine_dt, qp);
-    auto coarse_solver = ECSIM<1, 1>(L, Np, Nx, Nsub, coarse_dt, qp);
+    auto fine_solver = ECSIM<1, 1>(L, Np, Nx, Nsub, fine_dt, qp, LinSolvers::SolverType::GMRES);
+    auto coarse_solver = ECSIM<1, 1>(L, Np, Nx, Nsub, coarse_dt, qp, LinSolvers::SolverType::LU);
     auto parareal_solver = Parareal<decltype(fine_solver), decltype(coarse_solver)>(fine_solver, coarse_solver, wp_P, 50);
     int refinements = 50;
     MatrixXd speedup(refinements, 2);

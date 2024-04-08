@@ -23,8 +23,8 @@ int ECSIM_1D_chaotic_test(int argc, char* argv[]) {
     double T = std::stod(argv[1]);
     double coarse_dt = std::stod(argv[2]);
     double fine_dt = std::stod(argv[3]);
-    auto coarse_solver = ECSIM<1, 1>(L, Np, Nx, 1, coarse_dt, qp);
-    auto fine_solver = ECSIM<1, 1>(L, Np, Nx, 1, fine_dt, qp);
+    auto coarse_solver = ECSIM<1, 1>(L, Np, Nx, 1, coarse_dt, qp, LinSolvers::SolverType::LU);
+    auto fine_solver = ECSIM<1, 1>(L, Np, Nx, 1, fine_dt, qp, LinSolvers::SolverType::GMRES);
     auto para_solver = Parareal(fine_solver, coarse_solver);
     int NT = T / coarse_dt;
 

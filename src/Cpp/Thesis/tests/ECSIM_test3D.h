@@ -13,10 +13,10 @@ using namespace Eigen;
 int ECSIM_3D_test(int argc, char* argv[]) {
     double L = 2 * EIGEN_PI; // Size of position space
     int Np = 10000; // number of particles
-    int Nx = 64; // number of grid cells
+    int Nx = 512; // number of grid cells
     int fine_Nx = Nx;
     double coarse_dt = 1e-2;
-    double fine_dt = 1e-2;
+    double fine_dt = 1e-4;
     int num_thr = 12;
     double T = 12 * coarse_dt;
     int Nsub = 1;
@@ -59,9 +59,8 @@ int ECSIM_3D_test(int argc, char* argv[]) {
     Array3Xd vp(3, Np), E0(3,Nx), Bc(3,Nx);
 
     TestProblems::SetTransverse(xp, vp, E0, Bc, qp, Nx, Np, L);
-
-    auto coarse_solver = ECSIM<1, 3>(L, Np, Nx, Nsub, coarse_dt, qp);
-    auto fine_solver = ECSIM<1, 3>(L, Np, fine_Nx, 1, fine_dt, qp);
+    auto coarse_solver = ECSIM<1, 3>(L, Np, Nx, Nsub, coarse_dt, qp,LinSolvers::SolverType::LU);
+    auto fine_solver = ECSIM<1, 3>(L, Np, fine_Nx, 1, fine_dt, qp, LinSolvers::SolverType::GMRES);
     auto para_solver = Parareal(fine_solver, coarse_solver,thresh);
     int NT = T / coarse_dt;
 

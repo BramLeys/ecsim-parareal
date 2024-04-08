@@ -30,8 +30,8 @@ int ECSIM_parareal_test(int argc, char* argv[]) {
 
     int NT = (int)(T / coarse_dt); // number of time steps
 
-    auto fine_solver = ECSIM<1,1>(L, Np, Nx, fine_subcycling, fine_dt, qp);
-	auto coarse_solver = ECSIM<1, 1>(L, Np, Nx, coarse_subcycling, coarse_dt, qp);
+    auto fine_solver = ECSIM<1,1>(L, Np, Nx, fine_subcycling, fine_dt, qp, LinSolvers::SolverType::GMRES);
+	auto coarse_solver = ECSIM<1, 1>(L, Np, Nx, coarse_subcycling, coarse_dt, qp, LinSolvers::SolverType::LU);
 	auto parareal_solver = Parareal<decltype(fine_solver), decltype(coarse_solver)>(fine_solver, coarse_solver, wp_P, 10);
     VectorXd ts = VectorXd::LinSpaced(NT + 1, 0, T);
 

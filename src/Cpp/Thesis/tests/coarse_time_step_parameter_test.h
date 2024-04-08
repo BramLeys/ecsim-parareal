@@ -24,10 +24,11 @@ int coarse_time_step_parameter_test(int argc, char* argv[]) {
     TestProblems::SetTransverse(xp, vp, E0, Bc, qp, Nx, Np, L);
 
     double fine_dt = 1e-4;
+    double coarse_dt = 1e-2;
     double T = 1;
     double wp_P = 1e-8;
-    auto fine_solver = ECSIM<1, 3>(L, Np, Nx, Nsub, fine_dt, qp);
-    auto coarse_solver = ECSIM<1, 3>(L, Np, Nx, Nsub, fine_dt, qp);
+    auto fine_solver = ECSIM<1, 3>(L, Np, Nx, Nsub, fine_dt, qp, LinSolvers::SolverType::GMRES);
+    auto coarse_solver = ECSIM<1, 3>(L, Np, Nx, Nsub, fine_dt, qp, LinSolvers::SolverType::LU);
     auto parareal_solver = Parareal<decltype(fine_solver), decltype(coarse_solver)>(fine_solver, coarse_solver, wp_P, 50);
 
     VectorXd Xn(4 * Np + 6 * Nx);

@@ -11,5 +11,5 @@
 
 int main(int argc, char* argv[])
 {
-	return spatial_coarsening_parameter_test(argc,argv);
+	return ECSIM_3D_test(argc,argv);
 }

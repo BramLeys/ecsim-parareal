@@ -2,11 +2,9 @@
 #define ECSIM_SOLVERS
 #include "debug.h"
 #include "common.h"
+#include "linsolvers.h"
 #include <Eigen/Dense>
 #include <Eigen/Sparse>
-#include<Eigen/SparseCholesky>
-#include <Eigen/SparseLU>
-#include <unsupported/Eigen/IterativeSolvers>
 using namespace Eigen;
 namespace TestProblems {
     // 1D-3V
@@ -173,6 +171,8 @@ namespace TestProblems {
     }
 }
 
+
+
 template <int xdim,int vdim>
 class ECSIMBase {
 protected:
@@ -186,9 +186,10 @@ protected:
     double theta = 0.5; //theta of field and particle mover
     const ArrayXd& qp; // charge of each particle
     double Vx; // volume of regular grid
+    LinSolvers::LinSolver solver;
 public:
-    ECSIMBase(double L, int Np, int Nx, int Nsub, double dt, Eigen::ArrayXd const& qp)
-        :L(L), Np(Np), Nx(Nx), Nsub(Nsub), dt(dt), qp(qp)
+    ECSIMBase(double L, int Np, int Nx, int Nsub, double dt, Eigen::ArrayXd const& qp, LinSolvers::SolverType type=LinSolvers::SolverType::LU)
+        :L(L), Np(Np), Nx(Nx), Nsub(Nsub), dt(dt), qp(qp),solver(type)
     {
         dx = L / Nx;
         Vx = pow(dx, xdim);
@@ -279,22 +280,11 @@ public:
             Eigen::Map <const Array<double, 3, -1>> vp(coarse_solution.col(step).data() + xdim * coarse_Np, vdim, coarse_Np);
             Eigen::Map <const Array<double, 3, -1>> E0(coarse_solution.col(step).data() + (xdim + vdim) * coarse_Np, vdim, coarse_Nx);
             Eigen::Map <const Array<double, 3, -1>> Bc(coarse_solution.col(step).data() + xdim * coarse_Np + (coarse_Np + coarse_Nx) * vdim, vdim, coarse_Nx);
-
             fine_solution.col(step)(seqN(0, (xdim + vdim) * coarse_Np)) << x_view, Map<const ArrayXd>(vp.data(), vp.size());
-
             for (int cell = 0; cell < coarse_Nx; cell++) {
                 for (int i = 0; i < factor; i++) {
-                    //ArrayXd tempE = E0.col(cell);
-                    //ArrayXd tempE1 = E0.col(cell + 1);
-                    //ArrayXd temp = (1 - ratios(i)) * E0.col(cell) + ratios(i) * E0.col(cell + 1);
                     fine_solution.col(step)(seqN((xdim + vdim) * fine_Np + (cell * factor + i) * vdim, vdim)) = (1 - ratios(i)) * E0.col(cell) + ratios(i) * E0.col((cell + 1)%coarse_Nx);
-                    //ArrayXd res = fine_solution.col(step)(seqN((xdim + vdim) * fine_Np + (cell * factor + i) * vdim, vdim));
-
-                    //ArrayXd tempB = Bc.col(cell);
-                    //ArrayXd tempB1 = Bc.col(cell + 1);
-                    //ArrayXd temp1 = (1 - ratios(i)) * Bc.col(cell) + ratios(i) * Bc.col(cell + 1);
                     fine_solution.col(step)(seqN(xdim * fine_Np + (fine_Np + fine_Nx) * vdim + (cell * factor + i) * vdim, vdim)) = (1 - ratios(i)) * Bc.col(cell) + ratios(i) * Bc.col((cell + 1) % coarse_Nx);
-                    //ArrayXd res1 = fine_solution.col(step)(seqN(xdim * fine_Np + (fine_Np + fine_Nx) * vdim + (cell * factor + i) * vdim, vdim));
                 }
             }
         }
@@ -321,24 +311,11 @@ public:
             Eigen::Map <const Array<double, 3, -1>> vp(fine_solution.col(step).data() + xdim * fine_Np, vdim, fine_Np);
             Eigen::Map <const Array<double, 3, -1>> E0(fine_solution.col(step).data() + (xdim + vdim) * fine_Np, vdim, fine_Nx);
             Eigen::Map <const Array<double, 3, -1>> Bc(fine_solution.col(step).data() + xdim * fine_Np + (fine_Np + fine_Nx) * vdim, vdim, fine_Nx);
-
             coarse_solution.col(step)(seqN(0, (xdim + vdim) * coarse_Np)) << x_view, Map<const ArrayXd>(vp.data(), vp.size());
-
             for (int i = 0; i < coarse_Nx; i++) {
                 int cell = factor * i;
-                //ArrayXXd tempE = E0.middleCols(cell - factor + 1, 2 * factor - 1);
-                //ArrayXd temp = E0.middleCols(cell - factor + 1, 2 * factor - 1).rowwise().mean();
-                //coarse_solution.col(step)(seqN((xdim + vdim) * coarse_Np + i * vdim, vdim)) = E0.middleCols(cell-factor+1,2*factor-1).rowwise().mean();
-                //ArrayXd res = coarse_solution.col(step)(seqN((xdim + vdim) * coarse_Np + i * vdim, vdim));
-
                 coarse_solution.col(step)(seqN((xdim + vdim) * coarse_Np + i * vdim, vdim)) = E0.col(cell);
-
                 coarse_solution.col(step)(seqN(xdim * coarse_Np + (coarse_Np + coarse_Nx) * vdim + i * vdim, vdim)) = Bc.col(cell);
-
-                //ArrayXXd tempB = Bc.middleCols(cell - factor + 1, 2 * factor - 1);
-                //ArrayXd temp2 = Bc.middleCols(cell - factor + 1, 2 * factor - 1).rowwise().mean();
-                //coarse_solution.col(step)(seqN(xdim * coarse_Np + (coarse_Np + coarse_Nx) * vdim + i * vdim, vdim)) = Bc.middleCols(cell - factor + 1, 2 * factor - 1).rowwise().mean();
-                //ArrayXd res2 = coarse_solution.col(step)(seqN(xdim * coarse_Np + (coarse_Np + coarse_Nx) * vdim + i * vdim, vdim));
             }
         }
     }
@@ -489,7 +466,6 @@ public:
 
         Eigen::Array3Xd B(3, this->Nx);
         std::vector<Eigen::Matrix3d> alphap(this->Np * this->Nsub); // column major
-        //Eigen::Array3Xd vphat(3,this->Np);
         Eigen::Array3Xd J0(Bc.rows(), Bc.cols());
 
         std::vector<std::vector<Triplet<double>>> tripletListM(9,std::vector<Triplet<double>>(this->Np * 4 * this->Nsub));
@@ -514,9 +490,6 @@ public:
 
         Eigen::SparseMatrix<double> Maxwell(5 * this->Nx, 5 * this->Nx);
 
-        //SparseLU<SparseMatrix<double>> solver;
-        GMRES<SparseMatrix<double>, IdentityPreconditioner> solver;
-
         std::vector<Triplet<double>> tripletListMaxwell;
 
         double beta = this->qom * this->dt / 2 / this->Nsub;
@@ -529,7 +502,8 @@ public:
         ArrayXXd cycle_steps(x_view.rows(),this->Nsub);
         std::vector<Array3Xd> Bp(this->Nsub, Array3Xd(3, this->Np));
         std::vector<Array3Xd> vphat(this->Nsub, Array3Xd(3, this->Np));
-
+        VectorXd x0 = VectorXd::Zero(5 * Nx);
+        //x0 << E0.row(0), E0.row(1), E0.row(2), Bc.row(1), Bc.row(2);
         for (size_t step = 0; step < yn.cols() - 1; step++) {
             auto tic = std::chrono::high_resolution_clock::now();
 
@@ -537,10 +511,9 @@ public:
             B.col(0) = 0.5 * (Bc.col(B.cols() - 1) + Bc.col(0));
 
             J0.setZero();
-            #pragma omp parallel for
+            #pragma omp parallel for shared(J0)
             for (int itsub = 0; itsub < this->Nsub; itsub++){
                 cycle_steps.col(itsub) = x_view + vp.row(0).transpose() * (itsub + 1) * this->dt / this->Nsub;
-                //x_view += vp.row(0) * itsub * this->dt / this->Nsub;
                 // Position is periodic with period L (parareal can go out of bounds between solves)
                 cycle_steps.col(itsub) = mod(cycle_steps.col(itsub), this->L);
 
@@ -560,8 +533,8 @@ public:
                     alphap[itsub * this->Np + ip].array() /= 1 + (Bp[itsub].col(ip) * (beta)).pow(2).sum();
 
                     vphat[itsub].col(ip) = alphap[itsub * this->Np + ip] * vp.col(ip).matrix();
-                    //J0.col(ix(ip, itsub)) += frac1(ip, itsub) * this->qp(ip) * vphat[itsub].col(ip);
-                    //J0.col(ix2(ip, itsub)) += (1 - frac1(ip, itsub)) * this->qp(ip) * vphat[itsub].col(ip);
+                    J0.col(ix(ip, itsub)) += frac1(ip, itsub) * this->qp(ip) * vphat[itsub].col(ip);
+                    J0.col(ix2(ip, itsub)) += (1 - frac1(ip, itsub)) * this->qp(ip) * vphat[itsub].col(ip);
 
                 }
                 for (int j = 0; j < 3; j++) {
@@ -573,12 +546,6 @@ public:
                             tripletListM[3 * j + i][itsub * 4 * this->Np + ip * 4 + 3] = Triplet<double>(ix2(ip, itsub), ix2(ip, itsub), pow((1 - frac1(ip, itsub)), 2) * this->qp(ip) * alphap[itsub * this->Np + ip](i, j) / this->Nsub);
                         }
                     }
-                }
-            }
-            for (int itsub = 0; itsub < this->Nsub; itsub++) {
-                for (int ip = 0; ip < this->Np; ip++) {
-                    J0.col(ix(ip, itsub)) += frac1(ip, itsub) * this->qp(ip) * vphat[itsub].col(ip);
-                    J0.col(ix2(ip, itsub)) += (1 - frac1(ip, itsub)) * this->qp(ip) * vphat[itsub].col(ip);
                 }
             }
 
@@ -686,7 +653,7 @@ public:
                 tripletListMaxwell[index++] = Triplet<double>(k + 3 * this->Nx, k + 3 * this->Nx, 1);
             }
             
-            // Fifth Row
+            // Fifth Rowblock
             for (int k = 0; k < Derc.outerSize(); ++k)
                 for (SparseMatrix<double>::InnerIterator it(Derc, k); it; ++it)
                 {
@@ -695,50 +662,11 @@ public:
             for (int k = 0; k < this->Nx; ++k) {
                 tripletListMaxwell[index++] = Triplet<double>(k + 4 * this->Nx, k + 4 * this->Nx, 1);
             }
-             
-
-            //Maxwell = (MatrixXd(5 * this->Nx, 5 * this->Nx) << AmpereX, this->qom * this->dt * this->dt * this->theta / 2 * Ms[3] / this->dx, this->qom * this->dt * this->dt * this->theta / 2 * Ms[6] / this->dx, NxZeros, NxZeros,
-            //    this->qom * this->dt * this->dt * this->theta / 2 * Ms[1] / this->dx, AmpereY, this->qom * this->dt * this->dt * this->theta / 2 * Ms[7] / this->dx, NxZeros, Derv * this->dt * this->theta,
-            //    this->qom * this->dt * this->dt * this->theta / 2 * Ms[2] / this->dx, this->qom * this->dt * this->dt * this->theta / 2 * Ms[5] / this->dx, AmpereZ, -Derv * this->dt * this->theta, NxZeros,
-            //    NxZeros, NxZeros, -Derc * this->dt * this->theta, NxIdentity, NxZeros,
-            //    NxZeros, Derc * this->dt * this->theta, NxZeros, NxZeros, NxIdentity).finished().sparseView();
-
-            //Maxwell.leftCols(this->Nx) = AmpereX, this->qom* this->dt* this->dt* this->theta / 2 * Ms[1] / this->dx, this->qom* this->dt* this->dt* this->theta / 2 * Ms[2] / this->dx, NxZeros, NxZeros;
-            //Maxwell.middleCols(this->Nx, this->Nx) = this->qom * this->dt * this->dt * this->theta / 2 * Ms[3] / this->dx, AmpereY, this->qom* this->dt* this->dt* this->theta / 2 * Ms[5] / this->dx, NxZeros, Derc* this->dt* this->theta;
-            //Maxwell.middleCols(2 * this->Nx, this->Nx) = this->qom * this->dt * this->dt * this->theta / 2 * Ms[6] / this->dx, this->qom* this->dt* this->dt* this->theta / 2 * Ms[7] / this->dx, AmpereZ, -Derc * this->dt * this->theta, NxZeros;
-            //Maxwell.middleCols(3 * this->Nx, this->Nx) = NxZeros, NxZeros, -Derv * this->dt * this->theta, NxIdentity, NxZeros;
-            //Maxwell.rightCols(this->Nx) = NxZeros, Derv* this->dt* this->theta, NxZeros, NxZeros, NxIdentity;
-            //Maxwell.makeCompressed();
+         
             Maxwell.setFromTriplets(tripletListMaxwell.begin(), tripletListMaxwell.end());
 
-            //GMRES (unsupported Eigen function)
-            //auto gmres_tic = std::chrono::high_resolution_clock::now();
-            auto x0 = MatrixXd(1,5 * Nx);
-            x0 << E0.row(0), E0.row(1), E0.row(2), Bc.row(1), Bc.row(2);
-            solver.compute(Maxwell);
-            xKrylov = solver.solve(bKrylov);
-            //auto gmres_toc = std::chrono::high_resolution_clock::now();
-            //double gmres_time = std::chrono::duration_cast<std::chrono::milliseconds>(gmres_toc - gmres_tic).count();
-            //PRINT("GMRES TOOK", gmres_time, "ms");
-
-            // LU
-            //auto LU_tic = std::chrono::high_resolution_clock::now();
-            //solver.compute(Maxwell);
-            //if (solver.info() != Success) {
-            //    // decomposition failed
-            //    std::cerr << "Decomposition of Maxwell matrix failed" << std::endl;
-            //    return;
-            //}
-            //xKrylov = solver.solve(bKrylov);
-            //if (solver.info() != Success) {
-            //    // solving failed
-            //    std::cerr << "Solving failed" << std::endl;
-            //    return;
-            //}
-            //auto LU_toc = std::chrono::high_resolution_clock::now();
-            //double LU_time = std::chrono::duration_cast<std::chrono::milliseconds>(LU_toc - LU_tic).count();
-            //PRINT("LU TOOK", LU_time, "ms");
-
+            xKrylov = this->solver.solve(Maxwell, bKrylov, x0);
+            x0 << xKrylov;
 
             E0 = ((Map < Array<double,3,Dynamic,Eigen::RowMajor>>(xKrylov.data(), 3, this->Nx)) - E0 * (1 - this->theta)) / this->theta;
             Bc.row(1) = (xKrylov(seqN(3 * this->Nx, this->Nx)).array() - Bc.row(1).transpose() * (1 - this->theta)) / this->theta;

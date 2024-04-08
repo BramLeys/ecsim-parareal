@@ -47,8 +47,8 @@ int ECSIM_1D_test(int argc, char* argv[]) {
             return 1;
         }
     }
-    auto coarse_solver = ECSIM<1, 1>(L, Np, Nx, Nsub, coarse_dt, qp);
-    auto fine_solver = ECSIM<1, 1>(L, Np, Nx, 1, fine_dt, qp);
+    auto coarse_solver = ECSIM<1, 1>(L, Np, Nx, Nsub, coarse_dt, qp, LinSolvers::SolverType::LU);
+    auto fine_solver = ECSIM<1, 1>(L, Np, Nx, 1, fine_dt, qp, LinSolvers::SolverType::GMRES);
     auto para_solver = Parareal(fine_solver,coarse_solver);
     int NT = T / coarse_dt;
 
