@@ -171,8 +171,6 @@ namespace TestProblems {
     }
 }
 
-
-
 template <int xdim,int vdim>
 class ECSIMBase {
 protected:
@@ -580,89 +578,91 @@ public:
                 Ms[5].nonZeros() + Ms[6].nonZeros() + Ms[7].nonZeros() + 2 * Derv.nonZeros() + 2 * Derc.nonZeros() + 2 * this->Nx);
 
             int index = 0;
-            // First Rowblock
-            for (int k = 0; k < AmpereX.outerSize(); ++k)
-                for (SparseMatrix<double>::InnerIterator it(AmpereX, k); it; ++it)
-                {
-                    tripletListMaxwell[index++] = Triplet<double>(it.row(), it.col(), it.value());
-                }
-            for (int k = 0; k < Ms[3].outerSize(); ++k)
-                for (SparseMatrix<double>::InnerIterator it(Ms[3], k); it; ++it)
-                {
-                    tripletListMaxwell[index++] = Triplet<double>(it.row(), it.col() + this->Nx, this->qom * this->dt * this->dt * this->theta / 2 / this->dx * it.value());
+            // Fill Maxwell matrix
+            {
+                // First Rowblock
+                for (int k = 0; k < AmpereX.outerSize(); ++k)
+                    for (SparseMatrix<double>::InnerIterator it(AmpereX, k); it; ++it)
+                    {
+                        tripletListMaxwell[index++] = Triplet<double>(it.row(), it.col(), it.value());
+                    }
+                for (int k = 0; k < Ms[3].outerSize(); ++k)
+                    for (SparseMatrix<double>::InnerIterator it(Ms[3], k); it; ++it)
+                    {
+                        tripletListMaxwell[index++] = Triplet<double>(it.row(), it.col() + this->Nx, this->qom * this->dt * this->dt * this->theta / 2 / this->dx * it.value());
+                    }
+
+                for (int k = 0; k < Ms[6].outerSize(); ++k)
+                    for (SparseMatrix<double>::InnerIterator it(Ms[6], k); it; ++it)
+                    {
+                        tripletListMaxwell[index++] = Triplet<double>(it.row(), it.col() + 2 * this->Nx, this->qom * this->dt * this->dt * this->theta / 2 / this->dx * it.value());
+                    }
+
+                // Second Rowblock
+                for (int k = 0; k < Ms[1].outerSize(); ++k)
+                    for (SparseMatrix<double>::InnerIterator it(Ms[1], k); it; ++it)
+                    {
+                        tripletListMaxwell[index++] = Triplet<double>(it.row() + 1 * this->Nx, it.col() + 0 * this->Nx, this->qom * this->dt * this->dt * this->theta / 2 / this->dx * it.value());
+                    }
+
+                for (int k = 0; k < AmpereY.outerSize(); ++k)
+                    for (SparseMatrix<double>::InnerIterator it(AmpereY, k); it; ++it)
+                    {
+                        tripletListMaxwell[index++] = Triplet<double>(it.row() + 1 * this->Nx, it.col() + 1 * this->Nx, it.value());
+                    }
+                for (int k = 0; k < Ms[7].outerSize(); ++k)
+                    for (SparseMatrix<double>::InnerIterator it(Ms[7], k); it; ++it)
+                    {
+                        tripletListMaxwell[index++] = Triplet<double>(it.row() + 1 * this->Nx, it.col() + 2 * this->Nx, this->qom * this->dt * this->dt * this->theta / 2 / this->dx * it.value());
+                    }
+                for (int k = 0; k < Derv.outerSize(); ++k)
+                    for (SparseMatrix<double>::InnerIterator it(Derv, k); it; ++it)
+                    {
+                        tripletListMaxwell[index++] = Triplet<double>(it.row() + 1 * this->Nx, it.col() + 4 * this->Nx, it.value());
+                    }
+
+                // Third Rowblock
+                for (int k = 0; k < Ms[2].outerSize(); ++k)
+                    for (SparseMatrix<double>::InnerIterator it(Ms[2], k); it; ++it)
+                    {
+                        tripletListMaxwell[index++] = Triplet<double>(it.row() + 2 * this->Nx, it.col() + 0 * this->Nx, this->qom * this->dt * this->dt * this->theta / 2 / this->dx * it.value());
+                    }
+                for (int k = 0; k < Ms[5].outerSize(); ++k)
+                    for (SparseMatrix<double>::InnerIterator it(Ms[5], k); it; ++it)
+                    {
+                        tripletListMaxwell[index++] = Triplet<double>(it.row() + 2 * this->Nx, it.col() + 1 * this->Nx, this->qom * this->dt * this->dt * this->theta / 2 / this->dx * it.value());
+                    }
+                for (int k = 0; k < AmpereZ.outerSize(); ++k)
+                    for (SparseMatrix<double>::InnerIterator it(AmpereZ, k); it; ++it)
+                    {
+                        tripletListMaxwell[index++] = Triplet<double>(it.row() + 2 * this->Nx, it.col() + 2 * this->Nx, it.value());
+                    }
+                for (int k = 0; k < Derv.outerSize(); ++k)
+                    for (SparseMatrix<double>::InnerIterator it(Derv, k); it; ++it)
+                    {
+                        tripletListMaxwell[index++] = Triplet<double>(it.row() + 2 * this->Nx, it.col() + 3 * this->Nx, -it.value());
+                    }
+
+                // Fourth Rowblock
+                for (int k = 0; k < Derc.outerSize(); ++k)
+                    for (SparseMatrix<double>::InnerIterator it(Derc, k); it; ++it)
+                    {
+                        tripletListMaxwell[index++] = Triplet<double>(it.row() + 3 * this->Nx, it.col() + 2 * this->Nx, -it.value());
+                    }
+                for (int k = 0; k < this->Nx; ++k) {
+                    tripletListMaxwell[index++] = Triplet<double>(k + 3 * this->Nx, k + 3 * this->Nx, 1);
                 }
 
-            for (int k = 0; k < Ms[6].outerSize(); ++k)
-                for (SparseMatrix<double>::InnerIterator it(Ms[6], k); it; ++it)
-                {
-                    tripletListMaxwell[index++] = Triplet<double>(it.row(), it.col() + 2 * this->Nx, this->qom * this->dt * this->dt * this->theta / 2 / this->dx * it.value());
+                // Fifth Rowblock
+                for (int k = 0; k < Derc.outerSize(); ++k)
+                    for (SparseMatrix<double>::InnerIterator it(Derc, k); it; ++it)
+                    {
+                        tripletListMaxwell[index++] = Triplet<double>(it.row() + 4 * this->Nx, it.col() + 1 * this->Nx, it.value());
+                    }
+                for (int k = 0; k < this->Nx; ++k) {
+                    tripletListMaxwell[index++] = Triplet<double>(k + 4 * this->Nx, k + 4 * this->Nx, 1);
                 }
-
-            // Second Rowblock
-            for (int k = 0; k < Ms[1].outerSize(); ++k)
-                for (SparseMatrix<double>::InnerIterator it(Ms[1], k); it; ++it)
-                {
-                    tripletListMaxwell[index++] = Triplet<double>(it.row() + 1 * this->Nx, it.col() + 0 * this->Nx, this->qom * this->dt * this->dt * this->theta / 2 / this->dx * it.value());
-                }
-            
-            for (int k = 0; k < AmpereY.outerSize(); ++k)
-                for (SparseMatrix<double>::InnerIterator it(AmpereY, k); it; ++it)
-                {
-                    tripletListMaxwell[index++] = Triplet<double>(it.row() + 1 * this->Nx, it.col() + 1 * this->Nx, it.value());
-                }
-            for (int k = 0; k < Ms[7].outerSize(); ++k)
-                for (SparseMatrix<double>::InnerIterator it(Ms[7], k); it; ++it)
-                {
-                    tripletListMaxwell[index++] = Triplet<double>(it.row() + 1 * this->Nx, it.col() + 2 * this->Nx, this->qom * this->dt * this->dt * this->theta / 2 / this->dx * it.value());
-                }
-            for (int k = 0; k < Derv.outerSize(); ++k)
-                for (SparseMatrix<double>::InnerIterator it(Derv, k); it; ++it)
-                {
-                    tripletListMaxwell[index++] = Triplet<double>(it.row() + 1 * this->Nx, it.col() + 4 * this->Nx, it.value());
-                }
-
-            // Third Rowblock
-            for (int k = 0; k < Ms[2].outerSize(); ++k)
-                for (SparseMatrix<double>::InnerIterator it(Ms[2], k); it; ++it)
-                {
-                    tripletListMaxwell[index++] = Triplet<double>(it.row() + 2 * this->Nx, it.col() + 0 * this->Nx, this->qom * this->dt * this->dt * this->theta / 2 / this->dx * it.value());
-                }
-            for (int k = 0; k < Ms[5].outerSize(); ++k)
-                for (SparseMatrix<double>::InnerIterator it(Ms[5], k); it; ++it)
-                {
-                    tripletListMaxwell[index++] = Triplet<double>(it.row() + 2 * this->Nx, it.col() + 1 * this->Nx, this->qom * this->dt * this->dt * this->theta / 2 / this->dx * it.value());
-                }
-            for (int k = 0; k < AmpereZ.outerSize(); ++k)
-                for (SparseMatrix<double>::InnerIterator it(AmpereZ, k); it; ++it)
-                {
-                    tripletListMaxwell[index++] = Triplet<double>(it.row() + 2 * this->Nx, it.col() + 2 * this->Nx, it.value());
-                }
-            for (int k = 0; k < Derv.outerSize(); ++k)
-                for (SparseMatrix<double>::InnerIterator it(Derv, k); it; ++it)
-                {
-                    tripletListMaxwell[index++] = Triplet<double>(it.row() + 2 * this->Nx, it.col() + 3 * this->Nx, -it.value());
-                }
-
-            // Fourth Rowblock
-            for (int k = 0; k < Derc.outerSize(); ++k)
-                for (SparseMatrix<double>::InnerIterator it(Derc, k); it; ++it)
-                {
-                    tripletListMaxwell[index++] = Triplet<double>(it.row() + 3 * this->Nx, it.col() + 2 * this->Nx, -it.value());
-                }
-            for (int k = 0; k < this->Nx; ++k) {
-                tripletListMaxwell[index++] = Triplet<double>(k + 3 * this->Nx, k + 3 * this->Nx, 1);
             }
-            
-            // Fifth Rowblock
-            for (int k = 0; k < Derc.outerSize(); ++k)
-                for (SparseMatrix<double>::InnerIterator it(Derc, k); it; ++it)
-                {
-                    tripletListMaxwell[index++] = Triplet<double>(it.row() + 4 * this->Nx, it.col() + 1 * this->Nx, it.value());
-                }
-            for (int k = 0; k < this->Nx; ++k) {
-                tripletListMaxwell[index++] = Triplet<double>(k + 4 * this->Nx, k + 4 * this->Nx, 1);
-            }
-         
             Maxwell.setFromTriplets(tripletListMaxwell.begin(), tripletListMaxwell.end());
 
             xKrylov = this->solver.solve(Maxwell, bKrylov, x0);

@@ -59,8 +59,8 @@ int ECSIM_3D_test(int argc, char* argv[]) {
     Array3Xd vp(3, Np), E0(3,Nx), Bc(3,Nx);
 
     TestProblems::SetTransverse(xp, vp, E0, Bc, qp, Nx, Np, L);
-    auto coarse_solver = ECSIM<1, 3>(L, Np, Nx, Nsub, coarse_dt, qp,LinSolvers::SolverType::LU);
-    auto fine_solver = ECSIM<1, 3>(L, Np, fine_Nx, 1, fine_dt, qp, LinSolvers::SolverType::GMRES);
+    auto coarse_solver = ECSIM<1, 3>(L, Np, Nx, Nsub, coarse_dt, qp,LinSolvers::SolverType::GMRES);
+    auto fine_solver = ECSIM<1, 3>(L, Np, fine_Nx, 1, fine_dt, qp, LinSolvers::SolverType::LU);
     auto para_solver = Parareal(fine_solver, coarse_solver,thresh);
     int NT = T / coarse_dt;
 
@@ -94,7 +94,7 @@ int ECSIM_3D_test(int argc, char* argv[]) {
     toc = std::chrono::high_resolution_clock::now();
     double para_time = std::chrono::duration_cast<std::chrono::milliseconds>(toc - tic).count();
     PRINT("PARAREAL simulation takes", para_time, "ms");
-    PRINT("Parareal without subcycling takes", para_time / serial_time, "as long as the serial version");
+    PRINT("Parareal takes", para_time / serial_time, "as long as the serial version");
     PRINT("Energy difference parareal", abs((coarse_solver.Energy(Xn_para.col(NT)) - Eold).sum()) / abs(Eold.sum()));
     PRINT("Error in states of parareal compared to serial:", coarse_solver.Error(coarse_Yn, Xn_para.col(NT)));
 
