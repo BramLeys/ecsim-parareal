@@ -208,6 +208,8 @@ public:
     inline int Get_vdim() const { return vdim; }
     inline int Get_xdim() const { return xdim; }
 
+    inline void Set_solver(LinSolvers::SolverType type) { solver = LinSolvers::LinSolver(type); }
+
     inline Eigen::Array3d Energy(const Eigen::Ref<const MatrixXd> Xn) const {
         Eigen::Map < const Array<double, vdim, -1>> vp(Xn.data() + xdim * Np, vdim, Np);
         Eigen::Map < const Array<double, vdim, -1>> E0(Xn.data() + (xdim + vdim) * Np, vdim, Nx);
@@ -500,8 +502,7 @@ public:
         ArrayXXd cycle_steps(x_view.rows(),this->Nsub);
         std::vector<Array3Xd> Bp(this->Nsub, Array3Xd(3, this->Np));
         std::vector<Array3Xd> vphat(this->Nsub, Array3Xd(3, this->Np));
-        VectorXd x0 = VectorXd::Zero(5 * Nx);
-        //x0 << E0.row(0), E0.row(1), E0.row(2), Bc.row(1), Bc.row(2);
+        VectorXd x0 = VectorXd::Zero(5 * this->Nx);
         for (size_t step = 0; step < yn.cols() - 1; step++) {
             auto tic = std::chrono::high_resolution_clock::now();
 
@@ -509,7 +510,7 @@ public:
             B.col(0) = 0.5 * (Bc.col(B.cols() - 1) + Bc.col(0));
 
             J0.setZero();
-            #pragma omp parallel for shared(J0)
+            #pragma omp parallel for 
             for (int itsub = 0; itsub < this->Nsub; itsub++){
                 cycle_steps.col(itsub) = x_view + vp.row(0).transpose() * (itsub + 1) * this->dt / this->Nsub;
                 // Position is periodic with period L (parareal can go out of bounds between solves)
@@ -531,8 +532,8 @@ public:
                     alphap[itsub * this->Np + ip].array() /= 1 + (Bp[itsub].col(ip) * (beta)).pow(2).sum();
 
                     vphat[itsub].col(ip) = alphap[itsub * this->Np + ip] * vp.col(ip).matrix();
-                    J0.col(ix(ip, itsub)) += frac1(ip, itsub) * this->qp(ip) * vphat[itsub].col(ip);
-                    J0.col(ix2(ip, itsub)) += (1 - frac1(ip, itsub)) * this->qp(ip) * vphat[itsub].col(ip);
+                    //J0.col(ix(ip, itsub)) += frac1(ip, itsub) * this->qp(ip) * vphat[itsub].col(ip);
+                    //J0.col(ix2(ip, itsub)) += (1 - frac1(ip, itsub)) * this->qp(ip) * vphat[itsub].col(ip);
 
                 }
                 for (int j = 0; j < 3; j++) {
@@ -544,6 +545,12 @@ public:
                             tripletListM[3 * j + i][itsub * 4 * this->Np + ip * 4 + 3] = Triplet<double>(ix2(ip, itsub), ix2(ip, itsub), pow((1 - frac1(ip, itsub)), 2) * this->qp(ip) * alphap[itsub * this->Np + ip](i, j) / this->Nsub);
                         }
                     }
+                }
+            }
+            for (int itsub = 0; itsub < this->Nsub; itsub++) {
+                for (int ip = 0; ip < this->Np; ip++) {
+                    J0.col(ix(ip, itsub)) += frac1(ip, itsub) * this->qp(ip) * vphat[itsub].col(ip);
+                    J0.col(ix2(ip, itsub)) += (1 - frac1(ip, itsub)) * this->qp(ip) * vphat[itsub].col(ip);
                 }
             }
 
@@ -666,7 +673,6 @@ public:
             Maxwell.setFromTriplets(tripletListMaxwell.begin(), tripletListMaxwell.end());
 
             xKrylov = this->solver.solve(Maxwell, bKrylov, x0);
-            x0 << xKrylov;
 
             E0 = ((Map < Array<double,3,Dynamic,Eigen::RowMajor>>(xKrylov.data(), 3, this->Nx)) - E0 * (1 - this->theta)) / this->theta;
             Bc.row(1) = (xKrylov(seqN(3 * this->Nx, this->Nx)).array() - Bc.row(1).transpose() * (1 - this->theta)) / this->theta;

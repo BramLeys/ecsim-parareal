@@ -17,35 +17,55 @@ namespace LinSolvers {
         SimplicialLDLT,
         SimplicialLLT,
         CG,
-        LSCG
+        LSCG,
+        MINRES
     };
 	class SparseSolverBase {
+    protected:
+        double thresh;
 	public: 
+        SparseSolverBase(double threshold=1e-10)
+            :thresh(threshold)
+        {}
 		virtual inline Eigen::VectorXd solve(const Eigen::SparseMatrix<double>& A, const Eigen::VectorXd& b, const Eigen::VectorXd& initialGuess) const = 0;
 	};
 
     class BICGSTABSolver : public SparseSolverBase {
     public:
+        using SparseSolverBase::SparseSolverBase;
         inline Eigen::VectorXd solve(const Eigen::SparseMatrix<double>& A, const Eigen::VectorXd& b, const Eigen::VectorXd& initialGuess) const override {
             Eigen::BiCGSTAB<Eigen::SparseMatrix<double>, Eigen::IdentityPreconditioner> solver;
             solver.setMaxIterations(100);
-            solver.setTolerance(1e-7);
+            solver.setTolerance(this->thresh);
             return solver.compute(A).solveWithGuess(b, initialGuess);
         }
     };
 
     class GMRESSolver : public SparseSolverBase {
     public:
+        using SparseSolverBase::SparseSolverBase;
         inline Eigen::VectorXd solve(const Eigen::SparseMatrix<double>& A, const Eigen::VectorXd& b, const Eigen::VectorXd& initialGuess) const override {
             Eigen::GMRES<Eigen::SparseMatrix<double>, Eigen::IdentityPreconditioner> solver;
             solver.setMaxIterations(100);
-            solver.setTolerance(1e-7);
+            solver.setTolerance(this->thresh);
+            return solver.compute(A).solveWithGuess(b, initialGuess);
+        }
+    };
+
+    class MINRESSolver : public SparseSolverBase {
+    public:
+        using SparseSolverBase::SparseSolverBase;
+        inline Eigen::VectorXd solve(const Eigen::SparseMatrix<double>& A, const Eigen::VectorXd& b, const Eigen::VectorXd& initialGuess) const override {
+            Eigen::MINRES<Eigen::SparseMatrix<double>> solver;
+            solver.setMaxIterations(100);
+            solver.setTolerance(this->thresh);
             return solver.compute(A).solveWithGuess(b, initialGuess);
         }
     };
 
     class LUSolver : public SparseSolverBase {
     public:
+        using SparseSolverBase::SparseSolverBase;
         inline Eigen::VectorXd solve(const Eigen::SparseMatrix<double>& A, const Eigen::VectorXd& b, const Eigen::VectorXd& initialGuess) const override {
             Eigen::SparseLU<Eigen::SparseMatrix<double>> solver;
             solver.compute(A);
@@ -60,6 +80,7 @@ namespace LinSolvers {
 
     class QRSolver : public SparseSolverBase {
     public:
+        using SparseSolverBase::SparseSolverBase;
         inline Eigen::VectorXd solve(const Eigen::SparseMatrix<double>& A, const Eigen::VectorXd& b, const Eigen::VectorXd& initialGuess) const override {
             Eigen::SparseQR<Eigen::SparseMatrix<double>, Eigen::COLAMDOrdering<int>> solver;
             solver.compute(A);
@@ -74,6 +95,7 @@ namespace LinSolvers {
 
     class LDLTSolver : public SparseSolverBase {
     public:
+        using SparseSolverBase::SparseSolverBase;
         inline Eigen::VectorXd solve(const Eigen::SparseMatrix<double>& A, const Eigen::VectorXd& b, const Eigen::VectorXd& initialGuess) const override {
             Eigen::SimplicialLLT<Eigen::SparseMatrix<double>> solver;
             solver.compute(A);
@@ -87,6 +109,7 @@ namespace LinSolvers {
     };
     class LLTSolver : public SparseSolverBase {
     public:
+        using SparseSolverBase::SparseSolverBase;
         inline Eigen::VectorXd solve(const Eigen::SparseMatrix<double>& A, const Eigen::VectorXd& b, const Eigen::VectorXd& initialGuess) const override {
             Eigen::SimplicialLDLT<Eigen::SparseMatrix<double>> solver;
             solver.compute(A);
@@ -101,6 +124,7 @@ namespace LinSolvers {
 
     class CGSolver : public SparseSolverBase {
     public:
+        using SparseSolverBase::SparseSolverBase;
         inline Eigen::VectorXd solve(const Eigen::SparseMatrix<double>& A, const Eigen::VectorXd& b, const Eigen::VectorXd& initialGuess) const override {
             Eigen::ConjugateGradient<Eigen::SparseMatrix<double>> solver;
             solver.compute(A);
@@ -115,6 +139,7 @@ namespace LinSolvers {
 
     class LSCGSolver : public SparseSolverBase {
     public:
+        using SparseSolverBase::SparseSolverBase;
         inline Eigen::VectorXd solve(const Eigen::SparseMatrix<double>& A, const Eigen::VectorXd& b, const Eigen::VectorXd& initialGuess) const override {
             Eigen::LeastSquaresConjugateGradient<Eigen::SparseMatrix<double>, Eigen::IdentityPreconditioner> solver;
             solver.compute(A);
@@ -131,35 +156,38 @@ namespace LinSolvers {
     private:
         std::unique_ptr<SparseSolverBase> solver_;
     public:
-        LinSolver(LinSolvers::SolverType type) {
+        LinSolver(LinSolvers::SolverType type, double threshold=1e-10) {
             switch (type) {
                 case SolverType::GMRES:
-                    solver_ = std::make_unique<LinSolvers::GMRESSolver>();
+                    solver_ = std::make_unique<LinSolvers::GMRESSolver>(threshold);
+                    break;
+                case SolverType::MINRES:
+                    solver_ = std::make_unique<LinSolvers::MINRESSolver>(threshold);
                     break;
                 case SolverType::LU:
-                    solver_ = std::make_unique < LinSolvers::LUSolver>();
+                    solver_ = std::make_unique < LinSolvers::LUSolver>(threshold);
                     break;
                 case SolverType::QR:
-                    solver_ = std::make_unique<LinSolvers::QRSolver>();
+                    solver_ = std::make_unique<LinSolvers::QRSolver>(threshold);
                     break;
                 case SolverType::SimplicialLDLT:
-                    solver_ = std::make_unique<LinSolvers::LDLTSolver>();
+                    solver_ = std::make_unique<LinSolvers::LDLTSolver>(threshold);
                     break;
                 case SolverType::SimplicialLLT:
-                    solver_ = std::make_unique<LinSolvers::LLTSolver>();
+                    solver_ = std::make_unique<LinSolvers::LLTSolver>(threshold);
                     break;
                 case SolverType::CG:
-                    solver_ = std::make_unique<LinSolvers::CGSolver>();
+                    solver_ = std::make_unique<LinSolvers::CGSolver>(threshold);
                     break;
                 case SolverType::LSCG:
-                    solver_ = std::make_unique<LinSolvers::LSCGSolver>();
+                    solver_ = std::make_unique<LinSolvers::LSCGSolver>(threshold);
                     break;
                 case SolverType::BICGSTAB:
-                    solver_ = std::make_unique < LinSolvers::BICGSTABSolver>();
+                    solver_ = std::make_unique < LinSolvers::BICGSTABSolver>(threshold);
                     break;
                 default:
                     std::cerr << "Unkown solver, defaulting to LU Solver" << std::endl;
-                    solver_ = std::make_unique < LinSolvers::LUSolver>();
+                    solver_ = std::make_unique < LinSolvers::LUSolver>(threshold);
             }
         }
 
