@@ -18,7 +18,7 @@ int ECSIM_3D_test(int argc, char* argv[]) {
     double coarse_dt = 1e-2;
     double fine_dt = 1e-4;
     int num_thr = 12;
-    double T = 12 * coarse_dt;
+    double T = 0;
     int Nsub = 1;
     double thresh = 1e-8;
 
@@ -53,22 +53,21 @@ int ECSIM_3D_test(int argc, char* argv[]) {
             return 1;
         }
     }
+    T = T == 0 ? num_thr * coarse_dt : T;
     PRINT("Simulating on", num_thr, "cores with time interval = [0, ", T, "], coarse timestep =", coarse_dt, ", fine timestep =", fine_dt, "and", Nsub,"subcycles for the coarse solver.");
     
     ArrayXd xp(Np), qp(Np);
     Array3Xd vp(3, Np), E0(3,Nx), Bc(3,Nx);
 
     TestProblems::SetTransverse(xp, vp, E0, Bc, qp, Nx, Np, L);
+    int NT = round(T / coarse_dt);
     auto coarse_solver = ECSIM<1, 3>(L, Np, Nx, Nsub, coarse_dt, qp,LinSolvers::SolverType::GMRES);
     auto fine_solver = ECSIM<1, 3>(L, Np, fine_Nx, 1, fine_dt, qp, LinSolvers::SolverType::LU);
-    auto para_solver = Parareal(fine_solver, coarse_solver,thresh);
-    int NT = T / coarse_dt;
+    auto para_solver = Parareal(fine_solver, coarse_solver, thresh, NT + 1, num_thr);
 
     VectorXd Xn(4 * Np + 6 * Nx);
     Xn.col(0) << xp, Map<const ArrayXd>(vp.data(), vp.size()), Map<const ArrayXd>(E0.data(), E0.size()), Map<const ArrayXd>(Bc.data(), Bc.size());
     //coarse_solver.Step(Xn, 0, 10*coarse_dt, Xn); // Get into regime for E and B
-
-    PRINT("Initial max divergence", abs(coarse_solver.Divergence(Xn.col(0))).maxCoeff());
 
     auto Eold = coarse_solver.Energy(Xn);
     VectorXd Yn(4 * Np + 6 * fine_Nx), fine_Xn(4 * Np + 6 * fine_Nx);
@@ -94,15 +93,10 @@ int ECSIM_3D_test(int argc, char* argv[]) {
     toc = std::chrono::high_resolution_clock::now();
     double para_time = std::chrono::duration_cast<std::chrono::milliseconds>(toc - tic).count();
     PRINT("PARAREAL simulation takes", para_time, "ms");
-    PRINT("Parareal takes", para_time / serial_time, "as long as the serial version");
+    PRINT("Speedup =", serial_time/para_time);
     PRINT("Energy difference parareal", abs((coarse_solver.Energy(Xn_para.col(NT)) - Eold).sum()) / abs(Eold.sum()));
     PRINT("Error in states of parareal compared to serial:", coarse_solver.Error(coarse_Yn, Xn_para.col(NT)));
 
-    //auto temp = fine_solver.Divergence(Xn_para);
-    //for (int i = 0; i < temp.cols();i++) {
-    //    PRINT("Max parareal divergence of timestep",i," = ", abs(temp.col(i)).maxCoeff());
-    //}
-    //PRINT("Max serial divergence", abs(fine_solver.Divergence(Yn)).maxCoeff());
     return 0;
 }
 

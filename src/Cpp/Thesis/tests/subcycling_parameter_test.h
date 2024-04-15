@@ -14,20 +14,14 @@ using namespace Eigen;
 
 int subcycling_parameter_test(int argc, char* argv[]) {
 
-    int Nx = 16; // number of grid cells
+    int Nx = 512; // number of grid cells
     double L = 2 * EIGEN_PI; // Size of position space
     int Np = 10000; // number of particles
 
-
-    ArrayXd xp(Np), qp(Np);
-    Array3Xd vp(3, Np), E0(3, Nx), Bc(3, Nx);
-
-    TestProblems::SetTransverse(xp, vp, E0, Bc, qp, Nx, Np, L);
-
-    double coarse_dt = 1e-2;
-    double fine_dt = 1e-4;
+    double coarse_dt = 1e-3;
+    double fine_dt = 1e-5;
     int num_thr = 12;
-    double T = 12 * coarse_dt;
+    double T = 0;
     double thresh = 1e-8;
 
     for (int i = 1; i < argc; ++i) {
@@ -37,6 +31,9 @@ int subcycling_parameter_test(int argc, char* argv[]) {
         }
         else if (arg == "-c" && i + 1 < argc) {
             coarse_dt = std::stod(argv[++i]);
+        }
+        else if (arg == "-nx" && i + 1 < argc) {
+            Nx = std::stoi(argv[++i]);
         }
         else if (arg == "-n" && i + 1 < argc) {
             num_thr = std::stoi(argv[++i]);
@@ -48,10 +45,16 @@ int subcycling_parameter_test(int argc, char* argv[]) {
             thresh = std::stod(argv[++i]);
         }
         else {
-            std::cerr << "Usage: " << argv[0] << " -f <fine timestep> -n <number of threads> -t <time interval [0,t]> -c <coarse timestep> -tr <parareal threshold>" << std::endl;
+            std::cerr << "Usage: " << argv[0] << " -f <fine timestep> -n <number of threads> -nx <number of gridpoints> -t <time interval [0,t]> -c <coarse timestep> -tr <parareal threshold>" << std::endl;
             return 1;
         }
     }
+    T = T == 0 ? num_thr * coarse_dt : T;
+
+    ArrayXd xp(Np), qp(Np);
+    Array3Xd vp(3, Np), E0(3, Nx), Bc(3, Nx);
+
+    TestProblems::SetTransverse(xp, vp, E0, Bc, qp, Nx, Np, L);
 
     int nthreads, tid;
     #pragma omp parallel private(nthreads, tid) num_threads(num_thr)
@@ -66,16 +69,15 @@ int subcycling_parameter_test(int argc, char* argv[]) {
         }
 
     }  /* All threads join master thread and disband */
+    int NT = round(T / coarse_dt);
     auto coarse_solver = ECSIM<1, 3>(L, Np, Nx, 1, coarse_dt, qp, LinSolvers::SolverType::LU);
     auto fine_solver = ECSIM<1, 3>(L, Np, Nx, 1, fine_dt, qp, LinSolvers::SolverType::GMRES);
-    auto para_solver = Parareal(fine_solver, coarse_solver, thresh);
-    int NT = T / coarse_dt;
+    auto para_solver = Parareal(fine_solver, coarse_solver, thresh, NT + 1, num_thr);
     VectorXd ts = VectorXd::LinSpaced(NT + 1, 0, T);
 
     VectorXd Xn(4 * Np + 6 * Nx);
     Xn << xp, Map<const ArrayXd>(vp.data(), vp.size()), Map<const ArrayXd>(E0.data(), E0.size()), Map<const ArrayXd>(Bc.data(), Bc.size());
     auto Eold = fine_solver.Energy(Xn);
-
 
     // Actually perform the simulations
     // SERIAL
@@ -120,7 +122,7 @@ int subcycling_parameter_test(int argc, char* argv[]) {
         speedup(j, 4) = fine_solver.Error(Xn_fine, Xn_para).reshaped(4 * Xn_fine.cols(), 1).maxCoeff();
         speedup(j, 5) = Ediff_para.maxCoeff();
         speedup(j, 6) = fine_time / para_time;
-        PRINT("serial time / parareal time = ", speedup(j, 6));
+        PRINT("Speedup = ", speedup(j, 6));
         PRINT("Max relative 2-norm difference between parareal and serial =", speedup(j, 4));
         PRINT("Max relative energy difference against initial state for parareal =", speedup(j, 5));
         save("Parareal_speedup_subcycling.txt", speedup);

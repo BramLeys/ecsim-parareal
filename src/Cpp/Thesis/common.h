@@ -9,6 +9,7 @@
 #include <iomanip>
 #include <chrono>
 #include <random>
+#include <memory>
 
 const std::string filepath = "results/";
 

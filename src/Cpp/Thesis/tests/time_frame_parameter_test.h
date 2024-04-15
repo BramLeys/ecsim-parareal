@@ -12,27 +12,59 @@
 using namespace Eigen;
 
 int time_frame_parameter_test(int argc, char* argv[]) {
-    int Nx = 128; // number of grid cells
+    int Nx = 512; // number of grid cells
     double L = 2 * EIGEN_PI; // Size of position space
     int Np = 10000; // number of particles
     double dx = L / Nx; // length of each grid cell
     int Nsub = 1;
+
+    double coarse_dt = 1e-3;
+    double fine_dt = 1e-5;
+    int num_thr = 12;
+    double T = 0;
+    double thresh = 1e-8;
+
+    for (int i = 1; i < argc; ++i) {
+        std::string arg = argv[i];
+        if (arg == "-f" && i + 1 < argc) {
+            fine_dt = std::stod(argv[++i]);
+        }
+        else if (arg == "-c" && i + 1 < argc) {
+            coarse_dt = std::stod(argv[++i]);
+        }
+        else if (arg == "-nx" && i + 1 < argc) {
+            Nx = std::stoi(argv[++i]);
+        }
+        else if (arg == "-n" && i + 1 < argc) {
+            num_thr = std::stoi(argv[++i]);
+        }
+        else if (arg == "-t" && i + 1 < argc) {
+            T = std::stod(argv[++i]);
+        }
+        else if (arg == "-tr" && i + 1 < argc) {
+            thresh = std::stod(argv[++i]);
+        }
+        else {
+            std::cerr << "Usage: " << argv[0] << " -f <fine timestep> -n <number of threads> -nx <number of gridpoints> -t <time interval [0,t]> -c <coarse timestep> -tr <parareal threshold>" << std::endl;
+            return 1;
+        }
+    }
+    T = T == 0 ? num_thr * coarse_dt : T;
+
     ArrayXd xp(Np), vp(Np), E0(Nx), Bc(Nx), qp(Np);
 
     TestProblems::SetTwoStream(xp, vp, E0, Bc, qp, Nx, Np, L);
 
-    double coarse_dt = 1e-2;
-    double fine_dt = coarse_dt / 100;
-    double wp_P = 1e-8;
     auto fine_solver = ECSIM<1, 1>(L, Np, Nx, Nsub, fine_dt, qp, LinSolvers::SolverType::GMRES);
     auto coarse_solver = ECSIM<1, 1>(L, Np, Nx, Nsub, coarse_dt, qp, LinSolvers::SolverType::LU);
-    auto parareal_solver = Parareal<decltype(fine_solver), decltype(coarse_solver)>(fine_solver, coarse_solver, wp_P, 50);
-    int refinements = 50;
-    MatrixXd speedup(refinements, 2);
+    auto parareal_solver = Parareal<decltype(fine_solver), decltype(coarse_solver)>(fine_solver, coarse_solver, thresh, 50, num_thr);
+    int refinements = 8;
+    MatrixXd speedup(refinements, 7);
     for (int j = 1; j <= refinements; j++) {
-        double T = 12*j*coarse_dt;
+        int refinement_number = 12 * j;
+        double T = refinement_number * coarse_dt;
         PRINT("Testing time frame =",T);
-        int NT = (int)(T / coarse_dt); // number of time steps
+        int NT = round(T / coarse_dt); // number of time steps
         VectorXd ts = VectorXd::LinSpaced(NT + 1, 0, T);
         MatrixXd Xn_fine(2 * Np + 2 * Nx, NT + 1);
         Xn_fine.col(0) << xp, vp, E0, Bc;
@@ -51,7 +83,7 @@ int time_frame_parameter_test(int argc, char* argv[]) {
         double fine_time = std::chrono::duration_cast<std::chrono::milliseconds>(toc - tic).count();
 
         tic = std::chrono::high_resolution_clock::now();
-        parareal_solver.Solve(Xn_para, ts);
+        int k = parareal_solver.Solve(Xn_para, ts);
         toc = std::chrono::high_resolution_clock::now();
         double para_time = std::chrono::duration_cast<std::chrono::milliseconds>(toc - tic).count();
         VectorXd Ediff_para(NT);
@@ -60,11 +92,16 @@ int time_frame_parameter_test(int argc, char* argv[]) {
         }
         //PRINT("Finished serial in", std::chrono::duration_cast<std::chrono::milliseconds>(toc - tic).count(), "ms");
         //PRINT("Finished parareal in", std::chrono::duration_cast<std::chrono::milliseconds>(toc - tic).count(), "ms");
-        PRINT("Parareal takes", para_time / fine_time, "as long as the serial version");
-        speedup(j - 1, 0) = 12 * j;
-        speedup(j - 1, 1) = para_time / fine_time;
-        PRINT("Max relative energy difference against initial state for parareal =", Ediff_para.maxCoeff());
-        PRINT("Relative 2-norm difference between parareal and serial =", (Xn_fine - Xn_para).norm() / Xn_fine.norm());
+        speedup(j - 1, 0) = refinement_number;
+        speedup(j - 1, 1) = fine_time;
+        speedup(j - 1, 2) = para_time;
+        speedup(j - 1, 3) = k;
+        speedup(j - 1, 4) = fine_solver.Error(Xn_fine, Xn_para).reshaped(4 * Xn_fine.cols(), 1).maxCoeff();
+        speedup(j - 1, 5) = Ediff_para.maxCoeff();
+        speedup(j - 1, 6) = fine_time / para_time;
+        PRINT("Speedup = ", speedup(j - 1, 6));
+        PRINT("Max relative 2-norm difference between parareal and serial =", speedup(j - 1, 4));
+        PRINT("Max relative energy difference against initial state for parareal =", speedup(j - 1, 5));
         save("Parareal_speedup_time_interval.mat", speedup);
     }
     return 0;

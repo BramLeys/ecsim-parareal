@@ -12,5 +12,5 @@
 
 int main(int argc, char* argv[])
 {
-	return solver_test(argc,argv);
+	return time_step_parameter_test(argc,argv);
 }

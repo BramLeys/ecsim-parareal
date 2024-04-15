@@ -12,24 +12,54 @@
 using namespace Eigen;
 
 int time_step_parameter_test(int argc, char* argv[]) {
-    int Nx = 128; // number of grid cells
+
+    int Nx = 512; // number of grid cells
     double L = 2 * EIGEN_PI; // Size of position space
     int Np = 10000; // number of particles
     double dx = L / Nx; // length of each grid cell
     int Nsub = 1;
 
+    double coarse_dt = 1e-3;
+    double fine_dt = 1e-5;
+    int num_thr = 12;
+    double T = 0;
+    double thresh = 1e-8;
+
+    for (int i = 1; i < argc; ++i) {
+        std::string arg = argv[i];
+        if (arg == "-f" && i + 1 < argc) {
+            fine_dt = std::stod(argv[++i]);
+        }
+        else if (arg == "-c" && i + 1 < argc) {
+            coarse_dt = std::stod(argv[++i]);
+        }
+        else if (arg == "-nx" && i + 1 < argc) {
+            Nx = std::stoi(argv[++i]);
+        }
+        else if (arg == "-n" && i + 1 < argc) {
+            num_thr = std::stoi(argv[++i]);
+        }
+        else if (arg == "-t" && i + 1 < argc) {
+            T = std::stod(argv[++i]);
+        }
+        else if (arg == "-tr" && i + 1 < argc) {
+            thresh = std::stod(argv[++i]);
+        }
+        else {
+            std::cerr << "Usage: " << argv[0] << " -f <fine timestep> -n <number of threads> -nx <number of gridpoints> -t <time interval [0,t]> -c <coarse timestep> -tr <parareal threshold>" << std::endl;
+            return 1;
+        }
+    }
+    T = T == 0 ? num_thr * coarse_dt : T;
+    int NT = round(T / coarse_dt);
+
     ArrayXd xp(Np), qp(Np);
     Array3Xd vp(3, Np), E0(3, Nx), Bc(3, Nx);
 
     TestProblems::SetTransverse(xp, vp, E0, Bc, qp, Nx, Np, L);
-
-    double coarse_dt = 1e-2;
-    double T = 12* coarse_dt;
-    int NT = (int)(T / coarse_dt); // number of time steps
-    double wp_P = 1e-8;
     auto fine_solver = ECSIM<1, 3>(L, Np, Nx, Nsub, coarse_dt, qp, LinSolvers::SolverType::GMRES);
     auto coarse_solver = ECSIM<1, 3>(L, Np, Nx, Nsub, coarse_dt, qp, LinSolvers::SolverType::LU);
-    auto parareal_solver = Parareal<decltype(fine_solver), decltype(coarse_solver)>(fine_solver, coarse_solver, wp_P, 50);
+    auto parareal_solver = Parareal<decltype(fine_solver), decltype(coarse_solver)>(fine_solver, coarse_solver, thresh, NT + 1, num_thr);
 
     VectorXd Xn(4 * Np + 6 * Nx);
     Xn << xp, Map<const ArrayXd>(vp.data(), vp.size()), Map<const ArrayXd>(E0.data(), E0.size()), Map<const ArrayXd>(Bc.data(), Bc.size());
@@ -42,13 +72,12 @@ int time_step_parameter_test(int argc, char* argv[]) {
     MatrixXd Xn_para(Xn.rows(), NT + 1);
     Xn_para.col(0) << Xn;
 
-
-    int refinements = 10;
+    int refinements = 20;
     VectorXd Ediff_fine(NT);
     VectorXd Ediff_para(NT);
-    MatrixXd speedup(refinements,6);
+    MatrixXd speedup(refinements,7);
     for (int j = 1; j <= refinements; j++) {
-        int refinement_number = 1 * j;
+        int refinement_number = 10 * j;
         double fine_dt = coarse_dt / refinement_number;
         PRINT("dt_fine = ", refinement_number, "* dt_coarse");
         fine_solver.Set_dt(fine_dt);
@@ -72,13 +101,14 @@ int time_step_parameter_test(int argc, char* argv[]) {
         }
         //PRINT("Finished serial in", std::chrono::duration_cast<std::chrono::milliseconds>(toc - tic).count(), "ms");
         //PRINT("Finished parareal in", std::chrono::duration_cast<std::chrono::milliseconds>(toc - tic).count(), "ms");
-        PRINT("Parareal takes", para_time/fine_time, "as long as the serial version");
         speedup(j - 1, 0) = refinement_number;
         speedup(j - 1, 1) = fine_time;
         speedup(j - 1, 2) = para_time;
         speedup(j - 1, 3) = k;
         speedup(j - 1, 4) = fine_solver.Error(Xn_fine, Xn_para).reshaped(4 * Xn_fine.cols(), 1).maxCoeff();
         speedup(j - 1, 5) = Ediff_para.maxCoeff();
+        speedup(j - 1, 6) = fine_time / para_time;
+        PRINT("Speedup = ", speedup(j - 1, 6));
         PRINT("Max relative 2-norm difference between parareal and serial =", speedup(j - 1, 4));
         PRINT("Max relative energy difference against initial state for parareal =", speedup(j - 1, 5));
         save("Parareal_speedup_fine_time_steps.txt", speedup);

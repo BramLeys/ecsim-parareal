@@ -17,7 +17,7 @@ src/Cpp/Thesis/*.sln
 /src/Cpp/Thesis/.vs/Thesis
 /.vs
 /src/Cpp/Thesis/bin/*
-/src/Cpp/Thesis/test
+/src/Cpp/Thesis/*.exe
 Literatuur/
 /.vscode
 *.pdf
