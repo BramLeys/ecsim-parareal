@@ -10,6 +10,7 @@
 #include <chrono>
 #include <random>
 #include <memory>
+#include <assert.h>
 
 const std::string filepath = "results/";
 

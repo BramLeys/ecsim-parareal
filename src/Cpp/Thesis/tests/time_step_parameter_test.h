@@ -57,7 +57,7 @@ int time_step_parameter_test(int argc, char* argv[]) {
     Array3Xd vp(3, Np), E0(3, Nx), Bc(3, Nx);
 
     TestProblems::SetTransverse(xp, vp, E0, Bc, qp, Nx, Np, L);
-    auto fine_solver = ECSIM<1, 3>(L, Np, Nx, Nsub, coarse_dt, qp, LinSolvers::SolverType::GMRES);
+    auto fine_solver = ECSIM<1, 3>(L, Np, Nx, Nsub, coarse_dt, qp, LinSolvers::SolverType::LU);
     auto coarse_solver = ECSIM<1, 3>(L, Np, Nx, Nsub, coarse_dt, qp, LinSolvers::SolverType::LU);
     auto parareal_solver = Parareal<decltype(fine_solver), decltype(coarse_solver)>(fine_solver, coarse_solver, thresh, NT + 1, num_thr);
 
@@ -72,13 +72,19 @@ int time_step_parameter_test(int argc, char* argv[]) {
     MatrixXd Xn_para(Xn.rows(), NT + 1);
     Xn_para.col(0) << Xn;
 
-    int refinements = 20;
+    int refinements = 5;
     VectorXd Ediff_fine(NT);
     VectorXd Ediff_para(NT);
-    MatrixXd speedup(refinements,7);
-    for (int j = 1; j <= refinements; j++) {
+    MatrixXd speedup(refinements,11);
+
+    // Get a reference solution
+    MatrixXd Yn_ref(Xn.rows(), 1);
+    fine_dt = coarse_dt / (10 * refinements * 50);
+    fine_solver.Set_dt(fine_dt);
+    fine_solver.Step(Xn_para.col(0), 0, T, Yn_ref.col(0));
+    for (int j = refinements; j >= 1; j--) {
         int refinement_number = 10 * j;
-        double fine_dt = coarse_dt / refinement_number;
+        fine_dt = coarse_dt / refinement_number;
         PRINT("dt_fine = ", refinement_number, "* dt_coarse");
         fine_solver.Set_dt(fine_dt);
 
@@ -108,8 +114,14 @@ int time_step_parameter_test(int argc, char* argv[]) {
         speedup(j - 1, 4) = fine_solver.Error(Xn_fine, Xn_para).reshaped(4 * Xn_fine.cols(), 1).maxCoeff();
         speedup(j - 1, 5) = Ediff_para.maxCoeff();
         speedup(j - 1, 6) = fine_time / para_time;
+        auto err = fine_solver.Error(Yn_ref, Xn_para.col(NT));
+        speedup(j - 1, 7) = err(0);
+        speedup(j - 1, 8) = err(1);
+        speedup(j - 1, 9) = err(2);
+        speedup(j - 1, 10) = err(3);
         PRINT("Speedup = ", speedup(j - 1, 6));
         PRINT("Max relative 2-norm difference between parareal and serial =", speedup(j - 1, 4));
+        PRINT("Relative 2-norm difference between parareal and reference =", fine_solver.Error(Yn_ref, Xn_para.col(NT)));
         PRINT("Max relative energy difference against initial state for parareal =", speedup(j - 1, 5));
         save("Parareal_speedup_fine_time_steps.txt", speedup);
     }

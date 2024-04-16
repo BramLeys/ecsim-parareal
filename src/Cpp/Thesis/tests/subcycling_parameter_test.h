@@ -99,7 +99,13 @@ int subcycling_parameter_test(int argc, char* argv[]) {
     VectorXd Ediff_para(NT);
 
     int refinements = 10;
-    MatrixXd speedup(refinements, 7);
+    MatrixXd speedup(refinements, 11);
+    // Get a reference solution
+    MatrixXd Yn_ref(Xn.rows(),1);
+    double ref_fine_dt = fine_dt / 50;
+    fine_solver.Set_dt(ref_fine_dt);
+    fine_solver.Step(Xn_para.col(0), 0, T, Yn_ref.col(0));
+    fine_solver.Set_dt(fine_dt);
     for (int j = 0; j < refinements; j++) {
         int nsub = j + 1;
         PRINT("subcycles ", nsub);
@@ -122,8 +128,14 @@ int subcycling_parameter_test(int argc, char* argv[]) {
         speedup(j, 4) = fine_solver.Error(Xn_fine, Xn_para).reshaped(4 * Xn_fine.cols(), 1).maxCoeff();
         speedup(j, 5) = Ediff_para.maxCoeff();
         speedup(j, 6) = fine_time / para_time;
+        auto err = fine_solver.Error(Yn_ref, Xn_para.col(NT));
+        speedup(j - 1, 7) = err(0);
+        speedup(j - 1, 8) = err(1);
+        speedup(j - 1, 9) = err(2);
+        speedup(j - 1, 10) = err(3);
         PRINT("Speedup = ", speedup(j, 6));
         PRINT("Max relative 2-norm difference between parareal and serial =", speedup(j, 4));
+        PRINT("Relative 2-norm difference between parareal and reference =", fine_solver.Error(Yn_ref, Xn_para.col(NT)));
         PRINT("Max relative energy difference against initial state for parareal =", speedup(j, 5));
         save("Parareal_speedup_subcycling.txt", speedup);
     }

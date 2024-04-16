@@ -68,7 +68,8 @@ TASKS:
 - 4000 gridpoints, gmres for fine, LU for coarse
 
 - 512: time coarsening, subcycling, coarsening space
-- minres eigen
+- minres eigen (werkt niet, niet SPD)
+- du/dt = grad(u) (1,-2,1) or (1,-1) with 10000 points and try to find instability with timesteps (CFL = 1/dx^2)
 
 POSTER:
 - what is parareal, why care, what is coarse and fine solver-> find best coarse and fine solvers
@@ -80,4 +81,5 @@ TIPS:
 - start with methods, results (even if failed, try to find why)
 - put in initial plots, describe
 - introduction: what are integrators(explicit, implicit) -> parareal -> 
+
 
