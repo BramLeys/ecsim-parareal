@@ -31,8 +31,6 @@ public:
 		Eigen::MatrixXd fine_x(X.rows(), T.size() - 1), coarse_x(X.rows(), T.size() - 1), new_coarse_x( X.rows(), 1);
 		coarse_x = X.rightCols(coarse_x.cols());
 
-		auto Etot0 = fine.Energy(X.col(0)).sum();
-
 		// keeps track of parareal iteration 
 		int k = 0;
 		// the index up to which(inclusive) the algorithm has converged
@@ -59,16 +57,12 @@ public:
 				if ((converged_until == i) && (fine.Error(X.col(i + 1), previous_X.col(i + 1)).maxCoeff() <= thresh)) {
 					converged_until++;
 				}
-				//if ((converged_until == i) && ((X.col(i + 1) - previous_X.col(i+1)).norm() <= thresh*X.col(i+1).norm())) {
-				//	converged_until++;
-				//}
 				diffs(k-1, 0) = k;
-				diffs.row(k-1).rightCols(4) = diffs.row(k - 1).rightCols(4).max(fine.Error(X.col(i + 1), previous_X.col(i + 1)).transpose());
+				diffs(k-1,1) = fine.Error(X.col(i + 1), previous_X.col(i + 1)).maxCoeff();
 			}
 			//save("Parareal_states_iteration_" + std::to_string(k) + ".txt", X);
 			auto paratoc = std::chrono::high_resolution_clock::now();
-			PRINT("For iteration",k,": time taken =", std::chrono::duration_cast<std::chrono::milliseconds>(paratoc - paratic).count(),"ms,	max state change = ", diffs.row(k - 1).rightCols(4).maxCoeff(),"	and time steps until and including", converged_until, "have converged");
-			PRINT("Energy conservation first and last step = ", abs(fine.Energy(X.col(X.cols() - 1)).sum() - Etot0) / Etot0);
+			PRINT("For iteration",k,": time taken =", std::chrono::duration_cast<std::chrono::milliseconds>(paratoc - paratic).count(),"ms,	max state change = ", diffs(k - 1,1),"	and time steps until and including", converged_until, "have converged");
 
 		}
 		PRINT("Parareal took", k, "iterations.");

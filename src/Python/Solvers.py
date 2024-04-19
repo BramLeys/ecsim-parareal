@@ -315,7 +315,7 @@ class ECSIM:
             # Bookkeeping
             Ek, Ee, Eb = self.Energy(x[n,:])
             diff = abs((Ek - Ekold) + (Ee - Eeold) + (Eb - Ebold))/(Ekold+Eeold+Ebold)
-            print(Ek,Ee,Eb)
+            # print(Ek,Ee,Eb)
             print(f"Energy difference {diff}")
             if diff>1e-15:
                 print(f"dt = {self.dt} and iteration {n}, going from time {tn} to {tn+self.dt*(n)}, does not conserve energy with diff = {diff}")

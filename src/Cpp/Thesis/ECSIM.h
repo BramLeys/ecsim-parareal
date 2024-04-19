@@ -12,32 +12,34 @@ namespace TestProblems {
     // 1D-3V
     int SetTransverse(ArrayXd& xp, Array3Xd& vp, Array3Xd& E0, Array3Xd& Bc, ArrayXd& qp, int Nx = 128, int Np = 10000, double L = 2 * EIGEN_PI) {
         double dx = L / Nx; 
-        double Vx = pow(L / Np, 1); // volumes of each of the grid cells (need regular grid)
+        double Vx = pow(dx, 1); // volumes of each of the grid cells (need regular grid)
         double mode = 3;    // mode of perturbation sin
         double VT = 0.01; // thermic velocity of particles in each direction
         double V0 = 0.2;
         double V1 = .1 * V0 * 0;
 
         xp = ArrayXd::LinSpaced(Np, 0, L - L / Np);
-        vp = (VT * Array3Xd::Random(3, Np));
+        //vp = (VT * Array3Xd::Random(3, Np));
+        for (int i = 0; i < 3; i++) {
+            vp.row(i) = VT * ArrayXd::LinSpaced(Np, -1, 1);
+        }
         E0 = Array3Xd::Ones(3, Nx)/10;//initialization of electric field in each of the grid cells
         Bc = Array3Xd::Zero(3, Nx);
         Bc.row(0) = ArrayXd::Ones(Nx) / 10;
 
-        ArrayXd pm = 1 + ArrayXd::LinSpaced(Np, 0, Np - 1);
+        ArrayXd pm =ArrayXd::LinSpaced(Np, 1, Np);
         pm = 1 - 2 * mod(pm, 2).cast<double>();
         vp.row(1) += pm * V0 + V1 * (2 * EIGEN_PI * xp / L * mode).sin();
-
-        ArrayXd xv = ArrayXd::LinSpaced(Nx + 1, 0, L);
-        //ArrayXd vp = (VT * ArrayXd::LinSpaced(Np, -1, 1));
-        double sigma_x = .01;
 
         ArrayXi ix = (xp / dx).floor().cast<int>(); // cell of the particle, first cell is cell 0, first node is 0 last node Nx
         ArrayXd frac1 = 1 - (xp / dx - ix.cast<double>()); // W_{pg}
         ArrayXi ix2 = mod((ix + 1), Nx).cast<int>(); // second cell of influence due to extended local support of first order b-spline
 
+        //watch(ix);
+        //watch(ix2);
+        //watch(frac1);
         std::vector<Triplet<double>> tripletList(Np * 4);
-        #pragma omp parallel for shared(tripletList)
+        #pragma omp parallel for
         for (int ip = 0; ip < Np; ip++) {
             tripletList[ip * 4] = Triplet<double>(ix(ip), ix(ip), pow(frac1(ip), 2));
             tripletList[ip * 4 + 1] = Triplet<double>(ix2(ip), ix(ip), frac1(ip) * (1 - frac1(ip)));
@@ -46,10 +48,9 @@ namespace TestProblems {
         }
         SparseMatrix<double> M(Nx, Nx);
         M.setFromTriplets(tripletList.begin(), tripletList.end());
-
-        //VectorXd rhotarget = (-(xv(seqN(0,Nx))/L).pow(2)/sigma_x*sigma_x).exp();
+        //watch(M.toDense());
         VectorXd rhotarget = -VectorXd::Ones(Nx) * Vx;
-        SimplicialLDLT<SparseMatrix<double>> solver;
+        SparseLU<SparseMatrix<double>> solver;
         solver.compute(M);
         if (solver.info() != Success) {
             // decomposition failed
@@ -62,7 +63,7 @@ namespace TestProblems {
             std::cerr << "Solving failed" << std::endl;
             return 1;
         }
-
+        //watch(rhotildeV);
         qp = rhotildeV.array()(ix) * frac1 + rhotildeV.array()(ix2) * (1 - frac1);
         return 0;
     }
@@ -423,8 +424,8 @@ public:
 
         Eigen::SparseMatrix<double> Maxwell(5 * this->Nx, 5 * this->Nx);
 
-        //SparseLU<SparseMatrix<double>> solver;
-        GMRES<SparseMatrix<double>, IdentityPreconditioner> solver;
+        SparseLU<SparseMatrix<double>> solver;
+        //GMRES<SparseMatrix<double>, IdentityPreconditioner> solver;
 
         std::vector<Triplet<double>> tripletListMaxwell;
 
@@ -439,11 +440,19 @@ public:
         std::vector<Array3Xd> Bp(this->Nsub, Array3Xd(3, this->Np));
         std::vector<Array3Xd> vphat(this->Nsub, Array3Xd(3, this->Np));
 
+        //watch(this->qp);
+
         for (size_t step = 0; step < yn.cols() - 1; step++) {
             auto tic = std::chrono::high_resolution_clock::now();
+            
+            //watch(x_view);
+            //watch(vp);
+            //watch(E0);
+            //watch(Bc);
 
             B.rightCols(B.cols() - 1) = 0.5 * (Bc.rightCols(B.cols() - 1) + Bc.leftCols(B.cols() - 1));
             B.col(0) = 0.5 * (Bc.col(B.cols() - 1) + Bc.col(0));
+            //watch(B);
 
             J0.setZero();
             #pragma omp parallel for
@@ -452,6 +461,7 @@ public:
                 //x_view += vp.row(0) * itsub * this->dt / this->Nsub;
                 // Position is periodic with period L (parareal can go out of bounds between solves)
                 cycle_steps.col(itsub) = mod(cycle_steps.col(itsub), this->L);
+                //cycle_steps.col(itsub) = x_view;
 
                 ix.col(itsub) = (cycle_steps.col(itsub) / dx).floor().cast<int>(); // cell of the particle, first cell is cell 0, first node is 0 last node this->Nx
                 frac1.col(itsub) = 1 - (cycle_steps.col(itsub) / this->dx - ix.col(itsub).cast<double>()); // W_{pg}
@@ -490,16 +500,24 @@ public:
                     J0.col(ix2(ip, itsub)) += (1 - frac1(ip, itsub)) * this->qp(ip) * vphat[itsub].col(ip);
                 }
             }
-
-            x_view += vp.row(0) * this->dt;
-            x_view = mod(x_view, this->L);
-
+            //watch(Bp[0]);
+            //watch(vphat[0]);
+            //ArrayXd::Index ind1, ind2;
+            //vphat[0].abs().maxCoeff(&ind1, &ind2);
+            //PRINT("largest vphat element index = ", ind1,ind2);
             J0 /= this->Vx * this->Nsub;
+            //watch(ix);
+            ////watch(ix2);
+            //frac1.abs().maxCoeff(&ind1, &ind2);
+            //PRINT("largest frac1 element index = ", ind1,ind2);
+            //watch(frac1);
+            //watch(J0);
             // Setting Ms in columnmajor ordering -> [M0_0, M1_0, M2_0, M0_1, M1_1, M2_1, ...]
             for (int j = 0; j < 3; j++) {
                 for (int i = 0; i < 3; i++) {
                     Ms[3 * j + i].resize(this->Nx, this->Nx);
                     Ms[3 * j + i].setFromTriplets(tripletListM[3 * j + i].begin(), tripletListM[3 * j + i].end());
+                    //watch(Ms[3 * j + i].toDense().array());
                 }
             }
 
@@ -520,6 +538,7 @@ public:
             bKrylov << (E0.row(0) - J0.row(0) * this->dt * this->theta).transpose(), (E0.row(1) - J0.row(1) * this->dt * this->theta).transpose(), (E0.row(2) - J0.row(2) * this->dt * this->theta).transpose(), Bc.row(1).transpose(), Bc.row(2).transpose();
             tripletListMaxwell.resize(AmpereX.nonZeros() + AmpereY.nonZeros() + AmpereZ.nonZeros() + Ms[1].nonZeros() + Ms[2].nonZeros() + Ms[3].nonZeros() +
                 Ms[5].nonZeros() + Ms[6].nonZeros() + Ms[7].nonZeros() + 2 * Derv.nonZeros() + 2 * Derc.nonZeros() + 2 * this->Nx);
+            //watch(bKrylov.array());
 
             int index = 0;
             // First Rowblock
@@ -619,31 +638,32 @@ public:
             //Maxwell.rightCols(this->Nx) = NxZeros, Derv* this->dt* this->theta, NxZeros, NxZeros, NxIdentity;
             //Maxwell.makeCompressed();
             Maxwell.setFromTriplets(tripletListMaxwell.begin(), tripletListMaxwell.end());
+            //watch(Maxwell.toDense().array());
 
             //GMRES (unsupported Eigen function)
             //auto gmres_tic = std::chrono::high_resolution_clock::now();
-            auto x0 = MatrixXd(1,5 * Nx);
-            x0 << E0.row(0), E0.row(1), E0.row(2), Bc.row(1), Bc.row(2);
-            solver.compute(Maxwell);
-            xKrylov = solver.solve(bKrylov);
+            //auto x0 = MatrixXd(1,5 * Nx);
+            //x0 << E0.row(0), E0.row(1), E0.row(2), Bc.row(1), Bc.row(2);
+            //solver.compute(Maxwell);
+            //xKrylov = solver.solve(bKrylov);
             //auto gmres_toc = std::chrono::high_resolution_clock::now();
             //double gmres_time = std::chrono::duration_cast<std::chrono::milliseconds>(gmres_toc - gmres_tic).count();
             //PRINT("GMRES TOOK", gmres_time, "ms");
 
             // LU
             //auto LU_tic = std::chrono::high_resolution_clock::now();
-            //solver.compute(Maxwell);
-            //if (solver.info() != Success) {
-            //    // decomposition failed
-            //    std::cerr << "Decomposition of Maxwell matrix failed" << std::endl;
-            //    return;
-            //}
-            //xKrylov = solver.solve(bKrylov);
-            //if (solver.info() != Success) {
-            //    // solving failed
-            //    std::cerr << "Solving failed" << std::endl;
-            //    return;
-            //}
+            solver.compute(Maxwell);
+            if (solver.info() != Success) {
+                // decomposition failed
+                std::cerr << "Decomposition of Maxwell matrix failed" << std::endl;
+                return;
+            }
+            xKrylov = solver.solve(bKrylov);
+            if (solver.info() != Success) {
+                // solving failed
+                std::cerr << "Solving failed" << std::endl;
+                return;
+            }
             //auto LU_toc = std::chrono::high_resolution_clock::now();
             //double LU_time = std::chrono::duration_cast<std::chrono::milliseconds>(LU_toc - LU_tic).count();
             //PRINT("LU TOOK", LU_time, "ms");
@@ -653,11 +673,15 @@ public:
             Bc.row(1) = (xKrylov(seqN(3 * this->Nx, this->Nx)).array() - Bc.row(1).transpose() * (1 - this->theta)) / this->theta;
             Bc.row(2) = (xKrylov(seqN(4 * this->Nx, this->Nx)).array() - Bc.row(2).transpose() * (1 - this->theta)) / this->theta;
 
+            x_view += vp.row(0) * this->dt;
+            x_view = mod(x_view, this->L);
+            
             for (int itsub = 0; itsub < this->Nsub; itsub++) {
                 for (int ip = 0; ip < this->Np; ip++) {
                     vp.col(ip) = (2 * alphap[itsub * this->Np + ip] - Matrix3d::Identity()) * vp.col(ip).matrix() + alphap[itsub * this->Np + ip] * this->qom * this->dt / this->Nsub * (Map < Array<double, 3, Dynamic, Eigen::RowMajor>>(xKrylov.data(), 3, this->Nx).col(ix(ip, itsub)) * frac1(ip, itsub) + Map < Array<double, 3, Dynamic, Eigen::RowMajor>>(xKrylov.data(), 3, this->Nx).col(ix2(ip, itsub)) * (1 - frac1(ip, itsub))).matrix();
                 }
             }
+
 
             yn.col(step + 1) << x_view, Map<const ArrayXd>(vp.data(), vp.size()), Map<const ArrayXd>(E0.data(), E0.size()), Map<const ArrayXd>(Bc.data(), Bc.size());
             auto toc = std::chrono::high_resolution_clock::now();

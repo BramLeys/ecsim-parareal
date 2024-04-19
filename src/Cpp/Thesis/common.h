@@ -154,6 +154,6 @@ void restore(std::string filename, Eigen::MatrixXd& x) {
     file.close();
 }
 
-#define watch(x) std::cout<<std::setprecision (15)<<"Norm-1 of "<< (#x)<< ": "<< x.abs().sum()<< "   Norm-2 of "<< #x<< ": "<< x.matrix().norm()<< "     Norm-Inf of "<< #x<< ": "<< x.abs().maxCoeff()<<std::endl
+#define watch(x) std::cout<<std::setprecision (16)<<"Norm-1 of "<< (#x)<< ": "<< x.array().abs().sum()<< "   Norm-2 of "<< #x<< ": "<< x.matrix().norm()<< "     Norm-Inf of "<< #x<< ": "<< x.array().abs().maxCoeff()<<std::endl
 
 #endif

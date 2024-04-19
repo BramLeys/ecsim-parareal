@@ -10,55 +10,103 @@ using namespace Eigen;
 
 int parareal_convergence_test(int argc, char* argv[])
 {
-	const int N = 2;
-	VectorXd lambdas(N);
-	lambdas << -1, -2;
-	auto my_fun = [&lambdas](const Ref<const MatrixXd> xn, double tn, Ref<MatrixXd> yn) {yn = xn.cwiseProduct(-lambdas.cwiseAbs()); };
-	auto analytical = [&lambdas](const Eigen::VectorXd& t) {
-		// Vector case: return 2D array
-		Eigen::MatrixXd result(lambdas.size(), t.size());
-		for (int j = 0; j < t.size(); ++j) {
-			result.col(j) = (lambdas.array() * t(j)).exp();
-		}
-		return result;
-	};
-	double T = 5;
+	int N = 2;
+	double T = 0;
 	double coarse_dt = 1e-1;
-	double fine_dt = coarse_dt / 10;
+	double fine_dt = 1e-2;
+	double thresh = 1e-8;
+	double L = 2 * EIGEN_PI;
+
+	for (int i = 1; i < argc; ++i) {
+		std::string arg = argv[i];
+		if (arg == "-f" && i + 1 < argc) {
+			fine_dt = std::stod(argv[++i]);
+		}
+		else if (arg == "-c" && i + 1 < argc) {
+			coarse_dt = std::stod(argv[++i]);
+		}
+		else if (arg == "-t" && i + 1 < argc) {
+			T = std::stod(argv[++i]);
+		}
+		else if (arg == "-tr" && i + 1 < argc) {
+			thresh = std::stod(argv[++i]);
+		}
+		else if (arg == "-N" && i + 1 < argc) {
+			N = std::stoi(argv[++i]);
+		}
+		else {
+			std::cerr << "Usage: " << argv[0] << " -f <fine timestep> -t <time interval [0,t]> -c <coarse timestep> -tr <parareal threshold>" << std::endl;
+			return 1;
+		}
+	}
+	T = T == 0 ? 12 * coarse_dt : T;
+	VectorXd lambdas = -VectorXd::Random(N).cwiseAbs();
+
+	double dx = L / N;
+	auto second_order = [&dx](const Ref<const MatrixXd> xn, double tn, Ref<MatrixXd> yn) {
+		for (int j = 0; j < yn.cols(); j++) {
+			for (int i = 0; i < yn.rows(); i++) {
+				yn(i, j) = (xn((i - 1 + yn.rows()) % yn.rows(), j) - 2 * xn(i, j) + xn((i + 1) % yn.rows(), j)) / (dx * dx);
+			}
+		}
+		};
+	auto first_order = [&dx](const Ref<const MatrixXd> xn, double tn, Ref<MatrixXd> yn) {
+		for (int j = 0; j < yn.cols(); j++) {
+			for (int i = 0; i < yn.rows(); i++) {
+				yn(i, j) = (-xn((i - 1 + yn.rows()) % yn.rows(), j) + xn((i + 1) % yn.rows(), j)) / (2 * dx);
+			}
+		}
+		};
+
+	Eigen::SparseMatrix<double> A(N, N);
+	A.reserve(Eigen::VectorXi::Constant(N, 2));
+	for (int i = 0; i < N; ++i) {
+		A.insert(i, (i + 1) % N) = 1 / (2 * dx);
+		A.insert(i, (i - 1 + N) % N) = -1 / (2 * dx);
+	}
+	A.makeCompressed();
+
+	Eigen::SparseMatrix<double> B(N, N);
+	B.reserve(Eigen::VectorXi::Constant(N, 3));
+	for (int i = 0; i < N; ++i) {
+		B.insert(i, (i + 1) % N) = 1 / (dx * dx);
+		B.insert(i, i) = -2 / (dx * dx);
+		B.insert(i, (i - 1 + N) % N) = 1 / (dx * dx);
+	}
+	B.makeCompressed();
 
 
 	int NT = (int)(T / coarse_dt);
 	VectorXd ts = VectorXd::LinSpaced(NT + 1, 0, T);
 	int refinement = 5;
-	int iterations = 6;
 
-	auto F = ForwardEuler<decltype(my_fun)>(my_fun, fine_dt);
-	auto G = ForwardEuler<decltype(my_fun)>(my_fun, coarse_dt);
-	auto parareal_solver = Parareal<decltype(F), decltype(G)>(F, G);
+	//auto ref_solver = CrankNicolson(B, coarse_dt/pow(2,refinement+3));
+	//auto F = CrankNicolson(B, fine_dt);
+	//auto G = CrankNicolson(B, coarse_dt);
+	auto ref_solver = RK4<decltype(second_order)>(second_order, coarse_dt/pow(2,refinement+3));
+	auto F = RK4<decltype(second_order)>(second_order,fine_dt);
+	auto G = RK4<decltype(second_order)>(second_order,coarse_dt);
 
+	auto parareal_solver = Parareal<decltype(F), decltype(G)>(F, G, thresh);
+
+	VectorXd Xn = VectorXd::Random(N);
 	MatrixXd X_para(N, NT + 1);
-	MatrixXd X_fine(N, NT + 1);
-	MatrixXd errors(2, refinement);
-	VectorXd fine_mesh(refinement);
-	X_para.col(0) = analytical(VectorXd::Constant(1,0.));
-	X_fine.col(0) = X_para.col(0);
+	VectorXd Yn_ref(N), Yn_ser(N);
+	ref_solver.Step(Xn, 0, T, Yn_ref);
+	MatrixXd errors(refinement,3);
+	X_para.col(0) = Xn;
+	PRINT("coarse_dt/dx^2 = ", coarse_dt / dx / dx);
 	for (int i = 0; i < refinement; i++) {
-		fine_dt = coarse_dt / pow(10.,i);
-		fine_mesh(i) = fine_dt;
+		fine_dt = coarse_dt / pow(2,i);
 		F.Set_dt(fine_dt);
-		//X.col(0) = VectorXd::Random(N);
 		parareal_solver.Solve(X_para, ts);
-		errors(0,i) = (X_para - analytical(ts)).colwise().norm().cwiseQuotient(analytical(ts).colwise().norm()).norm();
-		for (int j = 0; j < NT ; j++) {
-			F.Step(X_fine.col(j), ts(j), ts(j+1), X_fine.col(j + 1));
-		}
-		errors(1,i) = (X_fine - analytical(ts)).colwise().norm().cwiseQuotient(analytical(ts).colwise().norm()).norm();
+		errors(i,1) = (X_para.col(NT) - Yn_ref).norm()/Yn_ref.norm();
+		F.Step(Xn, 0, T, Yn_ser);
+		errors(i,2) = (Yn_ser - Yn_ref).norm()/Yn_ref.norm();
+		errors(i, 0) = fine_dt;
 	}
-	PRINT("Analytical solution: ", analytical(ts));
-	PRINT("fine solution for dt =", fine_dt," : ", X_fine);
 	PRINT("Errors: ", errors);
-	save("Convergence_errors_parareal_vs_fine.mat", errors);
-	save("Convergence_errors_parareal_vs_fine_dt.mat", fine_mesh);
+	save("Convergence_errors_parareal_vs_fine.txt", errors);
 	return 0;
 }
 #endif
