@@ -81,11 +81,11 @@ int parareal_convergence_test(int argc, char* argv[])
 	int refinement = 5;
 
 	//auto ref_solver = CrankNicolson(B, coarse_dt/pow(2,refinement+3));
-	//auto F = CrankNicolson(B, fine_dt);
-	//auto G = CrankNicolson(B, coarse_dt);
+	auto F = CrankNicolson(B, fine_dt);
+	auto G = CrankNicolson(B, coarse_dt);
 	auto ref_solver = RK4<decltype(second_order)>(second_order, coarse_dt/pow(2,refinement+3));
-	auto F = RK4<decltype(second_order)>(second_order,fine_dt);
-	auto G = RK4<decltype(second_order)>(second_order,coarse_dt);
+	//auto F = RK4<decltype(second_order)>(second_order,fine_dt);
+	//auto G = RK4<decltype(second_order)>(second_order,coarse_dt);
 
 	auto parareal_solver = Parareal<decltype(F), decltype(G)>(F, G, thresh);
 
@@ -93,20 +93,29 @@ int parareal_convergence_test(int argc, char* argv[])
 	MatrixXd X_para(N, NT + 1);
 	VectorXd Yn_ref(N), Yn_ser(N);
 	ref_solver.Step(Xn, 0, T, Yn_ref);
-	MatrixXd errors(refinement,3);
+	ArrayXXd errors(refinement,3);
+	ArrayXXd convergence(refinement, 3);
 	X_para.col(0) = Xn;
-	PRINT("coarse_dt/dx^2 = ", coarse_dt / dx / dx);
 	for (int i = 0; i < refinement; i++) {
 		fine_dt = coarse_dt / pow(2,i);
 		F.Set_dt(fine_dt);
 		parareal_solver.Solve(X_para, ts);
-		errors(i,1) = (X_para.col(NT) - Yn_ref).norm()/Yn_ref.norm();
 		F.Step(Xn, 0, T, Yn_ser);
-		errors(i,2) = (Yn_ser - Yn_ref).norm()/Yn_ref.norm();
 		errors(i, 0) = fine_dt;
+		errors(i,1) = (X_para.col(NT) - Yn_ref).norm()/Yn_ref.norm();
+		errors(i,2) = (Yn_ser - Yn_ref).norm()/Yn_ref.norm();
+		if (i > 0) {
+			convergence(i, 0) = fine_dt;
+			convergence.row(i).rightCols(2) = errors.row(i).rightCols(2) / errors.row(i - 1).rightCols(2);
+			PRINT("Parareal convergence = ", convergence(i, 1));
+			PRINT("Serial convergence = ", convergence(i, 2));
+		}
 	}
-	PRINT("Errors: ", errors);
-	save("Convergence_errors_parareal_vs_fine.txt", errors);
+	PRINT("coarse_dt/dx^2 = ", coarse_dt / dx / dx);
+	PRINT("Errors:", errors);
+	PRINT("Convergence:", convergence);
+	save("convergence_errors.txt", errors);
+	save("convergence_rate.txt", convergence);
 	return 0;
 }
 #endif

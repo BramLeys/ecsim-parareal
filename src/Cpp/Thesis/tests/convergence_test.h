@@ -71,7 +71,7 @@ int convergence_test(int argc, char* argv[]) {
     B.makeCompressed();
 
     int refinements = 10;
-    auto solverRef = CrankNicolson(B, dt/pow(2,refinements+3));
+    auto solverRef = RK4<decltype(second_order)>(second_order, dt/pow(2,refinements+3));
     auto solverCN = CrankNicolson(B, dt);
     auto solverRK4 = RK4<decltype(second_order)>(second_order, dt);
 
@@ -80,6 +80,7 @@ int convergence_test(int argc, char* argv[]) {
     solverRef.Step(X, 0, T, Yn_ref);
 
     ArrayXXd errors(refinements, 3);
+    ArrayXXd convergence(refinements, 3);
     for (int i = 0; i < refinements; i++) {
         Yn_CN = VectorXd::Zero(N);
         double refined_dt = dt / pow(2, i);
@@ -95,10 +96,18 @@ int convergence_test(int argc, char* argv[]) {
         errors(i, 2) = (Yn_RK4 - Yn_ref).norm() / Yn_ref.norm();
         PRINT("CN error = ", errors(i, 1));
         PRINT("RK4 error = ", errors(i, 2));
+        if (i > 0) {
+            convergence(i, 0) = refined_dt;
+            convergence.row(i).rightCols(2) = errors.row(i).rightCols(2) / errors.row(i - 1).rightCols(2);
+            PRINT("CN convergence = ", convergence(i, 1));
+            PRINT("RK4 convergence = ", convergence(i, 2));
+        }
     }
 
     PRINT("Errors:", errors);
+    PRINT("Convergence:", convergence);
     save("convergence_errors.txt", errors);
+    save("convergence_rate.txt", convergence);
     return 0;
 }
 

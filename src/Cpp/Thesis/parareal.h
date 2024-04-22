@@ -54,11 +54,11 @@ public:
 				coarse.Step(X.col(i), T(i), T(i + 1), new_coarse_x);
 				X.col(i + 1) = new_coarse_x + fine_x.col(i) - coarse_x.col(i);
 				coarse_x.col(i) = new_coarse_x;
-				if ((converged_until == i) && (fine.Error(X.col(i + 1), previous_X.col(i + 1)).maxCoeff() <= thresh)) {
+				if ((converged_until == i) && (coarse.Error(X.col(i + 1), previous_X.col(i + 1)).maxCoeff() <= thresh)) {
 					converged_until++;
 				}
 				diffs(k-1, 0) = k;
-				diffs(k-1,1) = fine.Error(X.col(i + 1), previous_X.col(i + 1)).maxCoeff();
+				diffs(k-1,1) = std::max(diffs(k - 1, 1),coarse.Error(X.col(i + 1), previous_X.col(i + 1)).maxCoeff());
 			}
 			//save("Parareal_states_iteration_" + std::to_string(k) + ".txt", X);
 			auto paratoc = std::chrono::high_resolution_clock::now();
