@@ -10,7 +10,7 @@ namespace TestProblems {
     // 1D-3V
     int SetTransverse(ArrayXd& xp, Array3Xd& vp, Array3Xd& E0, Array3Xd& Bc, ArrayXd& qp, int Nx = 128, int Np = 10000, double L = 2 * EIGEN_PI) {
         double dx = L / Nx; 
-        double Vx = pow(L / Np, 1); // volumes of each of the grid cells (need regular grid)
+        double Vx = pow(dx, 1); // volumes of each of the grid cells (need regular grid)
         double mode = 3;    // mode of perturbation sin
         double VT = 0.01; // thermic velocity of particles in each direction
         double V0 = 0.2;
@@ -18,17 +18,14 @@ namespace TestProblems {
 
         xp = ArrayXd::LinSpaced(Np, 0, L - L / Np);
         vp = (VT * Array3Xd::Random(3, Np));
-        E0 = Array3Xd::Ones(3, Nx)/10;//initialization of electric field in each of the grid cells
+        E0 = Array3Xd::Zero(3, Nx)/10;//initialization of electric field in each of the grid cells
+        //Bc = Array3Xd::Ones(3, Nx) / 10;
         Bc = Array3Xd::Zero(3, Nx);
         Bc.row(0) = ArrayXd::Ones(Nx) / 10;
 
         ArrayXd pm = 1 + ArrayXd::LinSpaced(Np, 0, Np - 1);
         pm = 1 - 2 * mod(pm, 2).cast<double>();
         vp.row(1) += pm * V0 + V1 * (2 * EIGEN_PI * xp / L * mode).sin();
-
-        ArrayXd xv = ArrayXd::LinSpaced(Nx + 1, 0, L);
-        //ArrayXd vp = (VT * ArrayXd::LinSpaced(Np, -1, 1));
-        double sigma_x = .01;
 
         ArrayXi ix = (xp / dx).floor().cast<int>(); // cell of the particle, first cell is cell 0, first node is 0 last node Nx
         ArrayXd frac1 = 1 - (xp / dx - ix.cast<double>()); // W_{pg}
@@ -45,9 +42,8 @@ namespace TestProblems {
         SparseMatrix<double> M(Nx, Nx);
         M.setFromTriplets(tripletList.begin(), tripletList.end());
 
-        //VectorXd rhotarget = (-(xv(seqN(0,Nx))/L).pow(2)/sigma_x*sigma_x).exp();
         VectorXd rhotarget = -VectorXd::Ones(Nx) * Vx;
-        SimplicialLDLT<SparseMatrix<double>> solver;
+        SparseLU<SparseMatrix<double>> solver;
         solver.compute(M);
         if (solver.info() != Success) {
             // decomposition failed

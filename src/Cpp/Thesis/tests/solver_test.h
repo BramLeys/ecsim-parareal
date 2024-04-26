@@ -74,16 +74,16 @@ int solver_test(int argc, char* argv[]) {
     Xn_para.col(0) = Xn;
     VectorXd Ediff_para(NT);
 
-    const int nb_solvers = 4;
+    const int nb_solvers = 3;
     MatrixXd paralleltime(nb_solvers, nb_solvers);
     MatrixXd serialtime(nb_solvers, nb_solvers);
     MatrixXd iterations(nb_solvers, nb_solvers);
     std::cout << std::setprecision(16);
-    std::string labels[nb_solvers] = { "LU", "GMRES", "BICGSTAB", "MINRES" };
-    LinSolvers::SolverType types[nb_solvers] = { LinSolvers::SolverType::LU , LinSolvers::SolverType::GMRES, LinSolvers::SolverType::BICGSTAB, LinSolvers::SolverType::MINRES};
+    std::string labels[nb_solvers] = { "LU", "GMRES", "BICGSTAB" };
+    LinSolvers::SolverType types[nb_solvers] = { LinSolvers::SolverType::LU , LinSolvers::SolverType::GMRES, LinSolvers::SolverType::BICGSTAB};
     PRINT("LAYOUT:");
-    PRINT("FINE SOLVER: LU\t GMRES\t BICGSTAB\t MINRES");
-    PRINT("COARSE SOLVER:\n LU\n GMRES\n BICGSTAB\n MINRES");
+    PRINT("FINE SOLVER: LU\t GMRES\t BICGSTAB");
+    PRINT("COARSE SOLVER:\n LU\n GMRES\n BICGSTAB");
     for (int i = 0; i < nb_solvers; i++) {
         PRINT("====================== FINE =", labels[i], " ======================");
         fine_solver.Set_solver(types[i]);

@@ -21,3 +21,6 @@ src/Cpp/Thesis/*.sln
 Literatuur/
 /.vscode
 *.pdf
+/src/Cpp/Thesis/results/*.txt
+/src/Cpp/Thesis/results/*.png
+/src/Cpp/Thesis/results/*.eps

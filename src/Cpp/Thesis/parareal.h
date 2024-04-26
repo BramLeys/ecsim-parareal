@@ -72,9 +72,6 @@ public:
 				if ((converged_until == i) && (coarse.Error(X.col(i + 1), previous_X.col(i + 1)).maxCoeff() <= thresh)) {
 					converged_until++;
 				}
-				//if ((converged_until == i) && ((X.col(i + 1) - previous_X.col(i+1)).norm() <= thresh*X.col(i+1).norm())) {
-				//	converged_until++;
-				//}
 				diffs(k-1, 0) = k;
 				diffs.row(k-1).rightCols(4) = diffs.row(k - 1).rightCols(4).max(coarse.Error(X.col(i + 1), previous_X.col(i + 1)).transpose());
 			}

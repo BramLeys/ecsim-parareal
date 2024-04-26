@@ -24,6 +24,7 @@ int time_step_parameter_test(int argc, char* argv[]) {
     int num_thr = 12;
     double T = 0;
     double thresh = 1e-8;
+    int refinements = 5;
 
     for (int i = 1; i < argc; ++i) {
         std::string arg = argv[i];
@@ -32,6 +33,9 @@ int time_step_parameter_test(int argc, char* argv[]) {
         }
         else if (arg == "-c" && i + 1 < argc) {
             coarse_dt = std::stod(argv[++i]);
+        }
+        else if (arg == "-r" && i + 1 < argc) {
+            refinements = std::stoi(argv[++i]);
         }
         else if (arg == "-nx" && i + 1 < argc) {
             Nx = std::stoi(argv[++i]);
@@ -72,18 +76,19 @@ int time_step_parameter_test(int argc, char* argv[]) {
     MatrixXd Xn_para(Xn.rows(), NT + 1);
     Xn_para.col(0) << Xn;
 
-    int refinements = 5;
     VectorXd Ediff_fine(NT);
     VectorXd Ediff_para(NT);
-    MatrixXd speedup(refinements,11);
+    MatrixXd speedup(refinements + 1,7);
 
     // Get a reference solution
     MatrixXd Yn_ref(Xn.rows(), 1);
-    fine_dt = coarse_dt / (10 * refinements * 50);
+    fine_dt = coarse_dt / (pow(2, refinements+3));
     fine_solver.Set_dt(fine_dt);
     fine_solver.Step(Xn_para.col(0), 0, T, Yn_ref.col(0));
-    for (int j = refinements; j >= 1; j--) {
-        int refinement_number = 10 * j;
+    ArrayXXd error(refinements+1, 4);
+    ArrayXXd convergence(refinements+1, 4);
+    for (int j = 0; j <= refinements; j++) {
+        int refinement_number = pow(2,j);
         fine_dt = coarse_dt / refinement_number;
         PRINT("dt_fine = ", refinement_number, "* dt_coarse");
         fine_solver.Set_dt(fine_dt);
@@ -107,25 +112,28 @@ int time_step_parameter_test(int argc, char* argv[]) {
         }
         //PRINT("Finished serial in", std::chrono::duration_cast<std::chrono::milliseconds>(toc - tic).count(), "ms");
         //PRINT("Finished parareal in", std::chrono::duration_cast<std::chrono::milliseconds>(toc - tic).count(), "ms");
-        speedup(j - 1, 0) = refinement_number;
-        speedup(j - 1, 1) = fine_time;
-        speedup(j - 1, 2) = para_time;
-        speedup(j - 1, 3) = k;
-        speedup(j - 1, 4) = fine_solver.Error(Xn_fine, Xn_para).reshaped(4 * Xn_fine.cols(), 1).maxCoeff();
-        speedup(j - 1, 5) = Ediff_para.maxCoeff();
-        speedup(j - 1, 6) = fine_time / para_time;
+        speedup(j, 0) = refinement_number;
+        speedup(j, 1) = fine_time;
+        speedup(j, 2) = para_time;
+        speedup(j, 3) = k;
+        speedup(j, 4) = fine_solver.Error(Xn_fine, Xn_para).reshaped(4 * Xn_fine.cols(), 1).maxCoeff();
+        speedup(j, 5) = Ediff_para.maxCoeff();
+        speedup(j, 6) = fine_time / para_time;
         auto err = fine_solver.Error(Yn_ref, Xn_para.col(NT));
-        speedup(j - 1, 7) = err(0);
-        speedup(j - 1, 8) = err(1);
-        speedup(j - 1, 9) = err(2);
-        speedup(j - 1, 10) = err(3);
-        PRINT("Speedup = ", speedup(j - 1, 6));
-        PRINT("Max relative 2-norm difference between parareal and serial =", speedup(j - 1, 4));
+        error.row(j) = err.transpose();
+        if (j > 0) {
+            convergence.row(j) = error.row(j) / error.row(j - 1);
+        }
+        PRINT("Speedup = ", speedup(j, 6));
+        PRINT("Max relative 2-norm difference between parareal and serial =", speedup(j, 4));
         PRINT("Relative 2-norm difference between parareal and reference =", fine_solver.Error(Yn_ref, Xn_para.col(NT)));
-        PRINT("Max relative energy difference against initial state for parareal =", speedup(j - 1, 5));
-        save("Parareal_speedup_fine_time_steps.txt", speedup);
+        PRINT("Max relative energy difference against initial state for parareal =", speedup(j, 5));
+        save("Parareal_speedup_fine_time_steps.txt", speedup, "\trefinement number \t serial time \t parareal time \t number of parareal iterations \t max parareal error against serial solve \t max parareal energy diff \t speedup \t x error against ref \t v error against ref \t E error against ref \t B error against ref");
     }
-    //save("Parareal_v_evolution.txt", Xn_para.block(Np, 0,Np,Xn_para.cols()).transpose());
+    PRINT("ERROR: ", error);
+    PRINT("CONVERGENCE: ", convergence);
+    save("convergence_parareal.txt", convergence);
+    save("Parareal_sim.txt", Xn_para);
     return 0;
 }
 

@@ -132,9 +132,10 @@ double erfinv(double x)
 #undef erfinv_d1
 #undef erfinv_d0
 
-void save(std::string filename, const Eigen::MatrixXd& x) {
+void save(std::string filename,const Eigen::MatrixXd& x, std::string legend="") {
 	std::ofstream file(filepath + filename);
 	if (file.is_open()) {
+        file << legend << std::endl;
         file << std::setprecision(std::numeric_limits<double>::max_digits10);
 		file << x;
 		file.close();
