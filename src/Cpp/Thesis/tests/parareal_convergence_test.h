@@ -10,10 +10,10 @@ using namespace Eigen;
 
 int parareal_convergence_test(int argc, char* argv[])
 {
-	int N = 2;
+	int N = 10;
 	double T = 0;
-	double coarse_dt = 1e-1;
-	double fine_dt = 1e-2;
+	double coarse_dt = 1e-2;
+	double fine_dt = 1e-4;
 	double thresh = 1e-8;
 	double L = 2 * EIGEN_PI;
 
@@ -40,7 +40,6 @@ int parareal_convergence_test(int argc, char* argv[])
 		}
 	}
 	T = T == 0 ? 12 * coarse_dt : T;
-	VectorXd lambdas = -VectorXd::Random(N).cwiseAbs();
 
 	double dx = L / N;
 	auto second_order = [&dx](const Ref<const MatrixXd> xn, double tn, Ref<MatrixXd> yn) {
@@ -80,16 +79,17 @@ int parareal_convergence_test(int argc, char* argv[])
 	VectorXd ts = VectorXd::LinSpaced(NT + 1, 0, T);
 	int refinement = 5;
 
-	//auto ref_solver = CrankNicolson(B, coarse_dt/pow(2,refinement+3));
+	auto ref_solver = CrankNicolson(B, coarse_dt/pow(2,refinement+3));
 	auto F = CrankNicolson(B, fine_dt);
 	auto G = CrankNicolson(B, coarse_dt);
-	auto ref_solver = RK4<decltype(second_order)>(second_order, coarse_dt/pow(2,refinement+3));
+	//auto ref_solver = RK4<decltype(second_order)>(second_order, coarse_dt/pow(2,refinement+3));
 	//auto F = RK4<decltype(second_order)>(second_order,fine_dt);
 	//auto G = RK4<decltype(second_order)>(second_order,coarse_dt);
 
 	auto parareal_solver = Parareal<decltype(F), decltype(G)>(F, G, thresh);
 
-	VectorXd Xn = VectorXd::Random(N);
+	VectorXd Xn = (2 * ArrayXd::LinSpaced(N,0, L-dx)).sin() + 5;
+	//VectorXd Xn = VectorXd::Random(N);
 	MatrixXd X_para(N, NT + 1);
 	VectorXd Yn_ref(N), Yn_ser(N);
 	ref_solver.Step(Xn, 0, T, Yn_ref);

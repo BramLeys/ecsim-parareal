@@ -12,5 +12,5 @@
 
 int main(int argc, char* argv[])
 {
-	return ECSIM_convergence_test(argc,argv);
+	return parareal_convergence_test(argc,argv);
 }

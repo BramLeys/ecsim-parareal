@@ -19,10 +19,10 @@ namespace TestProblems {
         double V1 = .1 * V0 * 0;
 
         xp = ArrayXd::LinSpaced(Np, 0, L - L / Np);
-        //vp = (VT * Array3Xd::Random(3, Np));
-        for (int i = 0; i < 3; i++) {
-            vp.row(i) = VT * ArrayXd::LinSpaced(Np, -1, 1);
-        }
+        vp = (VT * Array3Xd::Random(3, Np));
+        //for (int i = 0; i < 3; i++) {
+        //    vp.row(i) = VT * ArrayXd::LinSpaced(Np, -1, 1);
+        //}
         E0 = Array3Xd::Ones(3, Nx)/10;//initialization of electric field in each of the grid cells
         Bc = Array3Xd::Zero(3, Nx);
         Bc.row(0) = ArrayXd::Ones(Nx) / 10;

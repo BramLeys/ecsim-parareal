@@ -28,9 +28,8 @@ public:
 		for (Eigen::Index i = 0; i < T.size()-1; i++) {
 			coarse.Step(X.col(i), T(i),T(i+1), X.col(i+ 1));
 		}
-		Eigen::MatrixXd fine_x(X.rows(), T.size() - 1), coarse_x(X.rows(), T.size() - 1), new_coarse_x( X.rows(), 1);
+		Eigen::MatrixXd fine_x(X.rows(), T.size() - 1), coarse_x(X.rows(), T.size() - 1), new_coarse_x(X.rows(), 1);
 		coarse_x = X.rightCols(coarse_x.cols());
-
 		// keeps track of parareal iteration 
 		int k = 0;
 		// the index up to which(inclusive) the algorithm has converged

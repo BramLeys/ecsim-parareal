@@ -11,20 +11,10 @@
 using namespace Eigen;
 
 int ECSIM_convergence_test(int argc, char* argv[]) {
-    int Nx = 128; // number of grid cells
+    int Nx = 512; // number of grid cells
     double L = 2 * EIGEN_PI; // Size of position space
     int Np = 10000; // number of particles
-
-
-    ArrayXd xp(Np), qp(Np);
-    Array3Xd vp(3, Np), E0(3, Nx), Bc(3, Nx);
-
-    TestProblems::SetTransverse(xp, vp, E0, Bc, qp, Nx, Np, L);
-
-    //ArrayXd xp(Np), qp(Np), vp(Np), E0(Nx), Bc(Nx);
-    //TestProblems::SetTwoStream(xp, vp, E0, Bc, qp, Nx, Np, L);
-
-    double dt = 0.125;
+    double dt = 1e-2;
     int num_thr = 12;
     double T = 0;
     int refinements = 5;
@@ -37,6 +27,9 @@ int ECSIM_convergence_test(int argc, char* argv[]) {
         }
         else if (arg == "-n" && i + 1 < argc) {
             num_thr = std::stoi(argv[++i]);
+        }
+        else if (arg == "-nx" && i + 1 < argc) {
+            Nx = std::stoi(argv[++i]);
         }
         else if (arg == "-t" && i + 1 < argc) {
             T = std::stod(argv[++i]);
@@ -53,14 +46,24 @@ int ECSIM_convergence_test(int argc, char* argv[]) {
         }
     }
     T = T == 0 ? num_thr * dt : T;
+
+    ArrayXd xp(Np), qp(Np);
+    Array3Xd vp(3, Np), E0(3, Nx), Bc(3, Nx);
+
+    TestProblems::SetTransverse(xp, vp, E0, Bc, qp, Nx, Np, L);
+
+    //ArrayXd xp(Np), qp(Np), vp(Np), E0(Nx), Bc(Nx);
+    //TestProblems::SetTwoStream(xp, vp, E0, Bc, qp, Nx, Np, L);
+
     auto G = ECSIM<1, 3>(L, Np, Nx, 1, dt, qp);
-    auto solver = ECSIM<1, 3>(L, Np, Nx, 1, dt, qp);
+    auto solver = ECSIM<1, 3>(L, Np, Nx, 1, dt/100, qp);
     auto parareal = Parareal<decltype(solver), decltype(G)>(solver, G, thresh);
     std::cout << std::setprecision(16);
     int dimension = (solver.Get_xdim() + solver.Get_vdim()) * Np + 2 * solver.Get_vdim() * Nx;
 
     VectorXd Xn(dimension);
     Xn.col(0) << xp, Map<const ArrayXd>(vp.data(), vp.size()), Map<const ArrayXd>(E0.data(), E0.size()), Map<const ArrayXd>(Bc.data(), Bc.size());
+    //solver.Step(Xn.col(0), 0, 10*dt, Xn.col(0));
 
     auto Eold = solver.Energy(Xn);
     VectorXd Yn_ref(dimension);

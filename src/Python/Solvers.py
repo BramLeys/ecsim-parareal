@@ -137,24 +137,35 @@ class RK4:
         self.dt = dt
         self.f = f
     def Step(self,yn,tn,tn1,return_all_steps = False):
-        nb_steps = math.ceil(abs((tn1-tn)/self.dt))
+        nb_steps = round(abs((tn1-tn)/self.dt))
         ts = np.array([tn + i*self.dt for i in range(nb_steps+1)])
         x = np.empty((nb_steps+1,yn.shape[0]))
         x[0,:] = yn
         for i in range(1,nb_steps+1):
-            k1 = self.f(ts[i-1],x[i-1])
-            k2 = self.f(ts[i-1] + 0.5*self.dt, x[i-1]+ 0.5*k1*self.dt)
-            k3 = self.f(ts[i-1] + 0.5*self.dt, x[i-1]+ (0.5*k2)*self.dt)
-            k4 = self.f(ts[i-1] + self.dt, x[i-1]+ k3*self.dt)
+            k1 = self.f(ts[i-1],x[i-1,:])
+            k2 = self.f(ts[i-1] + 0.5*self.dt, x[i-1,:]+ 0.5*k1*self.dt)
+            k3 = self.f(ts[i-1] + 0.5*self.dt, x[i-1,:]+ (0.5*k2)*self.dt)
+            k4 = self.f(ts[i-1] + self.dt, x[i-1,:]+ k3*self.dt)
             x[i,:] = x[i-1,:] + self.dt*(k1/6 + k2/3 + k3/3 + k4/6)
 
-        # if interpolation factor is not a whole integer, then the method breaks down to first order
-        interpolation_factor = (tn1-tn)/self.dt - int((tn1-tn)/self.dt)
-        if interpolation_factor == 0.0:
-            interpolation_factor = 1
         if return_all_steps:
-            x[-2,:] + interpolation_factor*(x[-1,:]-x[-2,:]), x
-        return x[-2,:] + interpolation_factor*(x[-1,:]-x[-2,:])
+            x
+        return x[-1,:]
+    
+class CrankNicholson:
+    def __init__(self,A,dt):
+        self.dt = dt
+        self.A = A
+    def Step(self,yn,tn,tn1,return_all_steps = False):
+        I = np.identity(self.A.shape[0])
+        nb_steps = round(abs((tn1-tn)/self.dt))
+        x = np.empty((nb_steps+1,yn.shape[0]))
+        x[0,:] = yn
+        for i in range(1,nb_steps+1):
+            x[i,:] = sp.sparse.linalg.spsolve(sp.sparse.csr_array(I - self.dt * 0.5 * self.A),x[i-1,:] + 0.5 * self.dt * self.A @ x[i-1,:])
+        if return_all_steps:
+            x
+        return x[-1,:]
 
 def watch(x):
     caller_name = "x"
@@ -164,12 +175,12 @@ def watch(x):
             if np.array_equal(var, x):
                 caller_name = var_name    
     # Compute the norms
-    norm_1 = np.linalg.norm(x, ord=1)
-    norm_2 = np.linalg.norm(x, ord=2)
-    norm_inf = np.linalg.norm(x, ord=np.inf)
+    norm_1 = np.sum(np.abs(x))
+    norm_2 = np.linalg.norm(x)
+    norm_inf = np.max(np.abs(x))
     
     # Print the norms and variable name
-    print(f"Norm-1 of {caller_name}: {norm_inf} Norm-2 of {caller_name}: {norm_2}   Norm-Inf of {caller_name}: {norm_1}")
+    print(f"Norm-1 of {caller_name}: {norm_1} Norm-2 of {caller_name}: {norm_2}   Norm-Inf of {caller_name}: {norm_inf}")
 
 class ECSIM:
     def __init__(self,Np,Nx,Nsub, dt, qp, vdim=3):
@@ -444,21 +455,23 @@ class PararealSolver:
         self.iterations = iterations # max number of parareal iterations
         self.it_threshold = it_threshold # threshold to assess convergence of states
         self.E_threshold = E_threshold # threshold to assess energy conservation
-        self.Nproc = 12 # total amount of processors to be used
+        # self.Nproc = 12 # total amount of processors to be used
 
-        # bookkeeping for multiprocessing
-        self.pipes = []
-        self.processes = []
-        for i in range(self.Nproc):
-            parent_pipe, child_pipe = multiprocessing.Pipe()
-            self.pipes.append(parent_pipe)
-            self.processes.append(multiprocessing.Process(target=worker,args=(self.F,child_pipe)))
-            self.processes[i].start()
+        # # bookkeeping for multiprocessing
+        # self.pipes = []
+        # self.processes = []
+        # for i in range(self.Nproc):
+        #     parent_pipe, child_pipe = multiprocessing.Pipe()
+        #     self.pipes.append(parent_pipe)
+        #     self.processes.append(multiprocessing.Process(target=worker,args=(self.F,child_pipe)))
+        #     self.processes[i].start()
     def __del__(self):
         # clean up the multiprocessers
-        for i in range(self.Nproc):
-            self.processes[i].terminate()
-            self.processes[i].join()
+        # for i in range(self.Nproc):
+        #     self.processes[i].terminate()
+        #     self.processes[i].join()
+        return
+
 
     # Performs the parareal alorithm on the timesteps defined in T, where X0 is the state at T[0] 
     # and using self.F and self.G to advance the solution
@@ -467,53 +480,46 @@ class PararealSolver:
         X[0,0,:] = X0
         for i in range(T.shape[0]-1):
             X[0,i+1,:] = self.G.Step(X[0,i,:],T[i],T[i+1])
-        #original total energy (only for energy conservation checks)
-        Etot = np.sum(self.G.Energy(X[0,0,:]))
         k = 0
-        fine_x = np.zeros((T.shape[0],X0.shape[0]))
-        fine_x[0,:] = X0
-        coarse_x = np.copy(X[0,:,:])
+        fine_x = np.zeros((T.shape[0]-1,X0.shape[0]))
+        coarse_x = np.copy(X[0,1:,:])
         new_coarse_x = np.empty(X0.shape[0])
         # keep track of which steps are already converged
-        converged_until = 1
+        converged_until = 0
 
-        while ((k < self.iterations) and (converged_until <= T.shape[0])):
+        while ((k < self.iterations) and (converged_until < T.shape[0] - 1)):
             k+=1
-            X[k,:converged_until,:] = X[k-1,:converged_until,:]
+            X[k,:converged_until+1,:] = X[k-1,:converged_until+1,:]
             # calculate best distribution of timesteps for processors
-            N_per_proc = np.ones(self.Nproc,dtype=int)*(T.shape[0]-converged_until)//self.Nproc
-            for i in range((T.shape[0]-converged_until)%self.Nproc):
-                N_per_proc[i] += 1
-            # give each processor its data to calculate
-            start = converged_until-1
-            for i in range(self.Nproc):
-                end = start+N_per_proc[i]
-                self.pipes[i].send(np.column_stack((X[k-1,start:end,:],T[start:end],T[start+1:end+1])))
-                start = end
-            # receive the results from each processor
-            start = converged_until
-            for i in range(self.Nproc):
-                end = start+N_per_proc[i]
-                fine_x[start:end,:] = self.pipes[i].recv()
-                start = end
+            # N_per_proc = np.ones(self.Nproc,dtype=int)*(T.shape[0]-converged_until-1)//self.Nproc
+            # for i in range((T.shape[0]-converged_until-1)%self.Nproc):
+            #     N_per_proc[i] += 1
+            # # give each processor its data to calculate
+            # start = converged_until
+            # for i in range(self.Nproc):
+            #     end = start+N_per_proc[i]
+            #     self.pipes[i].send(np.column_stack((X[k-1,start:end,:],T[start:end],T[start+1:end+1])))
+            #     start = end
+            # # receive the results from each processor
+            # start = converged_until+1
+            # for i in range(self.Nproc):
+            #     end = start+N_per_proc[i]
+            #     fine_x[start:end,:] = self.pipes[i].recv()
+            #     start = end
+
+            for i in range(converged_until,T.shape[0]-1):
+                fine_x[i,:] = self.F.Step(X[k-1,i,:], T[i],T[i+1])
             # fine_x[converged_until+1:,:] = np.array(p.map(self.thread_func,np.hstack((X[k-1,converged_until:-1,:],T[converged_until:-1,None],T[converged_until+1:,None]))))
-            for j in range(converged_until,T.shape[0]):
+            for j in range(converged_until,T.shape[0]-1):
                 # calculate new coarse solution
-                new_coarse_x[:] = self.G.Step(X[k,j-1,:], T[j-1],T[j])
+                new_coarse_x[:] = self.G.Step(X[k,j,:], T[j],T[j+1])
                 # use the Parareal update scheme
-                X[k,j,:] = new_coarse_x + fine_x[j,:] - coarse_x[j,:]
-                # check for convergence
-                if((np.linalg.norm(X[k,j,:]-X[k-1,j,:])<1e-15 *np.linalg.norm(X[k,j,:])) and (j == converged_until)):
-                    print(f"Time steps until and including {converged_until} have converged.")
-                    converged_until = j+1
+                X[k,j+1,:] = new_coarse_x + fine_x[j,:] - coarse_x[j,:]
                 coarse_x[j,:] = np.copy(new_coarse_x)
-            print(f"For iteration {k} max energy difference: {np.max(np.abs(list(map(lambda x: np.sum(self.F.Energy(x))-Etot , X[k,:,:])))/Etot)}, max relative state change: {np.max(np.linalg.norm((X[k,:,:]-X[k-1,:,:]),axis=1)/np.linalg.norm(X[k,:,:],axis=1))}")
-            if (np.max(np.linalg.norm(X[k,:,:]-X[k-1,:,:], axis=1))< self.it_threshold*np.max(np.linalg.norm(X[k,:,:],axis=1))):
-                break
-            # energy_conserved = np.all(list(map(lambda x: abs(np.sum(self.F.CartEnergy(x))-Etot) < self.E_threshold*Etot  , X[k,:,:])))
-            # if(energy_conserved):
-            #     print(f"Energy is completely conserved up to {np.max(list(map(lambda x: abs(np.sum(self.F.CartEnergy(x))-Etot), X[k,:,:])))/Etot}")
-            #     break
+                # check for convergence
+                if((j == converged_until) and (np.linalg.norm(X[k,j+1,:]-X[k-1,j+1,:])<self.it_threshold *np.linalg.norm(X[k,j+1,:]))):
+                    converged_until += 1
+            print(f"For iteration {k} max relative state change: {np.max(np.linalg.norm((X[k,:,:]-X[k-1,:,:]),axis=1)/np.linalg.norm(X[k,:,:],axis=1))} and time steps until and including {converged_until} have converged.")
         return X[:k+1,:,:]
     
     def thread_func(self,args):
