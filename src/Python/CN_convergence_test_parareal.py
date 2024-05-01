@@ -11,7 +11,7 @@ def parse_arguments():
                         help='Set the value of coarse solver dt (default: 1e-2)')
     parser.add_argument('-tr', '--thresh', type=float, default=1e-8,
                         help='Set the value of threshold (default: 1e-8)')
-    parser.add_argument('-N', '--N', type=int, default=1000,
+    parser.add_argument('-N', '--N', type=int, default=10,
                         help='Set the value of number of gridpoints (default: 10)')
     parser.add_argument('-t', '--T', type=float, default=0,
                         help='Set the time length, 0 becomes 12*coarse dt (default: 0)')
@@ -41,9 +41,9 @@ NT = (int)(args.T / args.coarse_dt)
 ts = np.linspace(0, args.T,NT + 1)
 refinement = 5
 
-F = Solvers.CrankNicholson(B, args.coarse_dt)
-G = Solvers.CrankNicholson(B, args.coarse_dt)
-ref_solver = Solvers.CrankNicholson(B, args.coarse_dt/pow(2,refinement+3))
+F = Solvers.CrankNicholson(B, args.coarse_dt, args.thresh/100)
+G = Solvers.CrankNicholson(B, args.coarse_dt, args.thresh/100)
+ref_solver = Solvers.CrankNicholson(B, args.coarse_dt/pow(2,refinement+3), 1e-15)
 
 parareal_solver = Solvers.PararealSolver(50, F, G, it_threshold=args.thresh)
 
