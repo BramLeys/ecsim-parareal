@@ -6,6 +6,7 @@
 #include <Eigen/Sparse>
 #include<Eigen/SparseCholesky>
 #include <Eigen/SparseLU>
+#include <Eigen/Eigenvalues>
 #include <unsupported/Eigen/IterativeSolvers>
 using namespace Eigen;
 namespace TestProblems {
@@ -71,7 +72,7 @@ namespace TestProblems {
     // 1D-1V
     int SetTwoStream(ArrayXd& xp, ArrayXd& vp, ArrayXd& E0, ArrayXd& Bc, ArrayXd& qp, int Nx = 128, int Np = 10000, double L = 2 * EIGEN_PI) {
         double dx = L / Nx;
-        double Vx = pow(L / Np, 1); // volumes of each of the grid cells (need regular grid)
+        double Vx = pow(dx, 1); // volumes of each of the grid cells (need regular grid)
         double mode = 5;    // mode of perturbation sin
         double VT = 0.02; // thermic velocity of particles in each direction
         double V0 = 0.1;
@@ -314,7 +315,7 @@ public:
         Eigen::VectorXd xKrylov(this->Nx);
         Eigen::SparseMatrix<double> Maxwell(this->Nx, this->Nx);
 
-        SimplicialLDLT<SparseMatrix<double>> solver;
+        SparseLU<SparseMatrix<double>> solver;
 
         // Eigen doesn't want to cast when this is not done
         int Nx = this->Nx;
@@ -424,8 +425,8 @@ public:
 
         Eigen::SparseMatrix<double> Maxwell(5 * this->Nx, 5 * this->Nx);
 
-        SparseLU<SparseMatrix<double>> solver;
-        //GMRES<SparseMatrix<double>, IdentityPreconditioner> solver;
+        //SparseLU<SparseMatrix<double>> solver;
+        GMRES<SparseMatrix<double>, IdentityPreconditioner> solver;
 
         std::vector<Triplet<double>> tripletListMaxwell;
 
@@ -455,7 +456,7 @@ public:
             //watch(B);
 
             J0.setZero();
-            #pragma omp parallel for
+            #pragma omp parallel for num_threads(this->Nsub)
             for (int itsub = 0; itsub < this->Nsub; itsub++){
                 cycle_steps.col(itsub) = x_view + vp.row(0).transpose() * (itsub + 1) * this->dt / this->Nsub;
                 //x_view += vp.row(0) * itsub * this->dt / this->Nsub;
@@ -644,26 +645,26 @@ public:
             //auto gmres_tic = std::chrono::high_resolution_clock::now();
             //auto x0 = MatrixXd(1,5 * Nx);
             //x0 << E0.row(0), E0.row(1), E0.row(2), Bc.row(1), Bc.row(2);
-            //solver.compute(Maxwell);
-            //xKrylov = solver.solve(bKrylov);
+            solver.compute(Maxwell);
+            xKrylov = solver.solve(bKrylov);
             //auto gmres_toc = std::chrono::high_resolution_clock::now();
             //double gmres_time = std::chrono::duration_cast<std::chrono::milliseconds>(gmres_toc - gmres_tic).count();
             //PRINT("GMRES TOOK", gmres_time, "ms");
 
             // LU
             //auto LU_tic = std::chrono::high_resolution_clock::now();
-            solver.compute(Maxwell);
-            if (solver.info() != Success) {
-                // decomposition failed
-                std::cerr << "Decomposition of Maxwell matrix failed" << std::endl;
-                return;
-            }
-            xKrylov = solver.solve(bKrylov);
-            if (solver.info() != Success) {
-                // solving failed
-                std::cerr << "Solving failed" << std::endl;
-                return;
-            }
+            //solver.compute(Maxwell);
+            //if (solver.info() != Success) {
+            //    // decomposition failed
+            //    std::cerr << "Decomposition of Maxwell matrix failed" << std::endl;
+            //    return;
+            //}
+            //xKrylov = solver.solve(bKrylov);
+            //if (solver.info() != Success) {
+            //    // solving failed
+            //    std::cerr << "Solving failed" << std::endl;
+            //    return;
+            //}
             //auto LU_toc = std::chrono::high_resolution_clock::now();
             //double LU_time = std::chrono::duration_cast<std::chrono::milliseconds>(LU_toc - LU_tic).count();
             //PRINT("LU TOOK", LU_time, "ms");

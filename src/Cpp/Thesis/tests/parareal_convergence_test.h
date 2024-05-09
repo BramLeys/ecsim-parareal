@@ -10,19 +10,17 @@ using namespace Eigen;
 
 int parareal_convergence_test(int argc, char* argv[])
 {
-	int N = 10;
+	int N = 100;
 	double T = 0;
 	double coarse_dt = 1e-2;
 	double fine_dt = 1e-4;
 	double thresh = 1e-8;
 	double L = 2 * EIGEN_PI;
+	int refinement = 5;
 
 	for (int i = 1; i < argc; ++i) {
 		std::string arg = argv[i];
-		if (arg == "-f" && i + 1 < argc) {
-			fine_dt = std::stod(argv[++i]);
-		}
-		else if (arg == "-c" && i + 1 < argc) {
+		if (arg == "-c" && i + 1 < argc) {
 			coarse_dt = std::stod(argv[++i]);
 		}
 		else if (arg == "-t" && i + 1 < argc) {
@@ -34,8 +32,11 @@ int parareal_convergence_test(int argc, char* argv[])
 		else if (arg == "-N" && i + 1 < argc) {
 			N = std::stoi(argv[++i]);
 		}
+		else if (arg == "-r" && i + 1 < argc) {
+			refinement = std::stoi(argv[++i]);
+		}
 		else {
-			std::cerr << "Usage: " << argv[0] << " -f <fine timestep> -t <time interval [0,t]> -c <coarse timestep> -tr <parareal threshold>" << std::endl;
+			std::cerr << "Usage: " << argv[0] << " -t <time interval [0,t]> -c <coarse timestep> -tr <parareal threshold> -N <number of gridcells> -r <number of refinements>" << std::endl;
 			return 1;
 		}
 	}
@@ -77,7 +78,6 @@ int parareal_convergence_test(int argc, char* argv[])
 
 	int NT = (int)(T / coarse_dt);
 	VectorXd ts = VectorXd::LinSpaced(NT + 1, 0, T);
-	int refinement = 5;
 
 	auto ref_solver = CrankNicolson(B, coarse_dt/pow(2,refinement+3));
 	auto F = CrankNicolson(B, fine_dt);
@@ -88,8 +88,8 @@ int parareal_convergence_test(int argc, char* argv[])
 
 	auto parareal_solver = Parareal<decltype(F), decltype(G)>(F, G, thresh);
 
-	VectorXd Xn = (2 * ArrayXd::LinSpaced(N,0, L-dx)).sin() + 5;
-	//VectorXd Xn = VectorXd::Random(N);
+	//VectorXd Xn = (2 * ArrayXd::LinSpaced(N,0, L-dx)).sin() + 5;
+	VectorXd Xn = VectorXd::Random(N);
 	MatrixXd X_para(N, NT + 1);
 	VectorXd Yn_ref(N), Yn_ser(N);
 	ref_solver.Step(Xn, 0, T, Yn_ref);

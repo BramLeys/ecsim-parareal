@@ -165,7 +165,7 @@ class CrankNicholson:
         for i in range(1,nb_steps+1):
             x[i,:],_ = sp.sparse.linalg.bicgstab(sp.sparse.csr_array(I - self.dt * 0.5 * self.A),x[i-1,:] + 0.5 * self.dt * self.A @ x[i-1,:],tol=self.thresh)
         if return_all_steps:
-            x
+            return x
         return x[-1,:]
 
 def watch(x):
@@ -518,8 +518,10 @@ class PararealSolver:
                 X[k,j+1,:] = new_coarse_x + fine_x[j,:] - coarse_x[j,:]
                 coarse_x[j,:] = np.copy(new_coarse_x)
                 # check for convergence
-                if((j == converged_until) and (np.linalg.norm(X[k,j+1,:]-X[k-1,j+1,:])<self.it_threshold *np.linalg.norm(X[k,j+1,:]))):
-                    converged_until += 1
+                if np.max(np.linalg.norm(X[k,:,:]-X[k-1,:,:],axis=-1)/np.linalg.norm(X[k,:,:],axis=-1))<=self.it_threshold:
+                   return X[:k+1,:,:]
+                # if((j == converged_until) and (np.linalg.norm(X[k,j+1,:]-X[k-1,j+1,:])<=self.it_threshold *np.linalg.norm(X[k,j+1,:]))):
+                #     converged_until += 1
             print(f"For iteration {k} max relative state change: {np.max(np.linalg.norm((X[k,:,:]-X[k-1,:,:]),axis=1)/np.linalg.norm(X[k,:,:],axis=1))} and time steps until and including {converged_until} have converged.")
         return X[:k+1,:,:]
     

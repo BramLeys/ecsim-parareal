@@ -8,9 +8,11 @@ import Solvers
 import common
 
 if __name__ == '__main__':
-    Nx=128 # number of grid cells
+    plt.ion()
+
+    Nx=500 # number of grid cells
     L=2*math.pi # Size of position space
-    NT=10 # number of time steps
+    NT=2**8 # number of time steps
     Np=10000 # number of particles
     graphics = True # should graphics be shown
     NTOUT=NT//2 # How many times should updates be shown
@@ -47,8 +49,6 @@ if __name__ == '__main__':
     vp[:,0] += pm*V0
 
     vp[:,0] += V1*np.sin(2*math.pi*xp/L*mode)
-    # vel = sp.io.loadmat("src/test.mat")
-    # vp[:,:] = vel["vel"]
 
     ix=np.floor(xp/dx).astype(int); # cell of the particle, first cell is cell 0, first node is 0 last node Nx
     frac1 = 1-(xp/dx-ix)
@@ -74,47 +74,48 @@ if __name__ == '__main__':
 
     rho=rho/Vx
 
-    dt_base=.125 #time step length
-    # max_para_iterations = 50
-    # wp_E = 1e-15
-    # wp_P = 1e-8
+    histEnergy = np.empty((NT))
 
-    solver = Solvers.ECSIM(Np,Nx,Nsub,dt_base,qp, 1)
+    solver = Solvers.ECSIM(Np,Nx,1,dt,qp, 1)
     Xn = np.hstack((np.reshape(xp,(Np*xdim)),np.reshape(vp,(Np*vdim)),np.reshape(E0,(Nx*vdim)),np.reshape(Bc,(Nx*vdim))))
-    T = dt_base*20
-    refinements = 4
-    solver.dt = dt_base/pow(2,refinements + 2)
-    time_start = time.perf_counter()
-    X_ref = solver.Step(Xn,0,T)
-    time_end = time.perf_counter()
-    print(f"Reference simulation of {T/solver.dt} timesteps took {time_end-time_start:0.4f}s")
-    sol = np.empty((refinements,Xn.shape[0]))
-    errors = np.empty((refinements,5))
-    for i in range(refinements):
-        solver.dt = dt_base/pow(2,i)
-        errors[i,0] = solver.dt
-        time_start = time.perf_counter()
-        sol[i,:] = solver.Step(Xn,0,T)
-        time_end = time.perf_counter()
-        print(f"Simulation of {T/solver.dt} timesteps took {time_end-time_start:0.4f}s")
-
-    xp_ref = X_ref[:xdim*Np]
-    vp_ref = X_ref[xdim*Np:xdim*Np+vdim*Np]
-    E0_ref = X_ref[xdim*Np+vdim*Np:xdim*Np+vdim*(Np + Nx)]
-    Bc_ref = X_ref[xdim*Np+vdim*(Np + Nx):xdim*Np+vdim*(Np + 2*Nx)]
-    convergence = np.empty((refinements,4))
-    for i in range(refinements):
-        xp = sol[i,:xdim*Np]
-        vp = sol[i,xdim*Np:xdim*Np+vdim*Np]
-        E0 = sol[i,xdim*Np+vdim*Np:xdim*Np+vdim*(Np + Nx)]
-        Bc = sol[i,xdim*Np+vdim*(Np + Nx):xdim*Np+vdim*(Np + 2*Nx)]
-        errors[i,1:] = [np.linalg.norm(xp-xp_ref)/np.linalg.norm(xp_ref),np.linalg.norm(vp-vp_ref)/np.linalg.norm(vp_ref),
-                        np.linalg.norm(E0-E0_ref)/np.linalg.norm(E0_ref),np.linalg.norm(Bc-Bc_ref)/np.linalg.norm(Bc_ref)]
-        if i > 0:
-            convergence[i,:] = errors[i,1:]/errors[i-1,1:]
-    print(f"errors = {errors}")
-    print(f"convergence = {convergence}")
+    # Xn = fine_ECSIM.Step(Xn,0,dt_fine)
+    Ek,Ee,Eb = solver.Energy(Xn)
+    print(f"kinetic energy = {Ek}, electric energy = {Ee}, magnetic energy = {Eb}")
+    
+    # time_start = time.perf_counter()
+    # X1 = solver.Step(Xn,0,(NT)*dt)
+    # time_end = time.perf_counter()
+    # print(f"Serial simulation of {NT*dt}s took {time_end-time_start:0.4f}s")
 
 
+    ax = plt.subplots(2,figsize=(8, 6), dpi=100)
+    line, = ax[1][0].plot([],[],"b.")
+    ax[1][0].set_xlim(0, L)
+    line_Etot, = ax[1][1].semilogy([],[],label="difference in total energy")
+    ax[1][1].set_xlim(0, NT*dt)
+    X1 = Xn
+    for it in range(NT):
+            X1 = solver.Step(X1,dt*it, dt*(it+1))
+            xp = np.reshape(X1[:xdim*Np],(Np))%L
+            vp = np.reshape(X1[xdim*Np:xdim*Np+vdim*Np], (Np,vdim))
+            Ek1, Ee1,Eb1 = solver.Energy(X1)
+            histEnergy[it] = Ek1 + Ee1 + Eb1
+            print(f"kinetic energy = {Ek1}, electric energy = {Ee1}, magnetic energy = {Eb1}")
+            if((it%round(NT/NTOUT)==0) and graphics):
+                ax[1][0].set_title(f"Fine solution")
+                line.set_data(xp,vp)
+                ax[1][0].set_xlabel('x')
+                ax[1][0].set_ylabel('vx')
+                ax[1][0].relim()
+                ax[1][0].autoscale_view(None,False,True)
+                line_Etot.set_data(np.arange(it+1)*dt,abs((histEnergy[:it+1] - histEnergy[0])/histEnergy[0]))
+                ax[1][1].set_xlabel('t')
+                ax[1][1].set_ylabel(r'\frac{|E(t) - E(0)|}{E(0)}')
+                ax[1][1].relim()
+                ax[1][1].autoscale_view(None,False,True)
+                plt.pause(0.01)
+                plt.draw()
 
+    plt.ioff()
+    plt.show()
 

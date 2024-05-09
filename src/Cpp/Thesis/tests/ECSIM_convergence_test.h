@@ -11,10 +11,10 @@
 using namespace Eigen;
 
 int ECSIM_convergence_test(int argc, char* argv[]) {
-    int Nx = 512; // number of grid cells
+    int Nx = 128; // number of grid cells
     double L = 2 * EIGEN_PI; // Size of position space
     int Np = 10000; // number of particles
-    double dt = 1e-2;
+    double dt = 0.125;
     int num_thr = 12;
     double T = 0;
     int refinements = 5;
@@ -45,7 +45,7 @@ int ECSIM_convergence_test(int argc, char* argv[]) {
             return 1;
         }
     }
-    T = T == 0 ? num_thr * dt : T;
+    T = T == 0 ? 1 : T;
 
     ArrayXd xp(Np), qp(Np);
     Array3Xd vp(3, Np), E0(3, Nx), Bc(3, Nx);

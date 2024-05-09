@@ -41,7 +41,7 @@ Np=10000 # number of particles
 graphics = True # should graphics be shown
 NTOUT=1 # How many times should updates be shown
 dx=L/Nx # length of each grid cell
-Nsub = 4
+Nsub = 1
 
 ax.set_xlim(0, L)
 ax2.set_xlim(0, NT*dt)
@@ -81,8 +81,8 @@ pm=1-2*(pm%2)
 vp[:,1] += pm*V0
 
 vp[:,1] += V1*np.sin(2*math.pi*xp/L*mode)
-vel = sp.io.loadmat("src/test.mat")
-vp[:,:] = vel["vel"]
+# vel = sp.io.loadmat("src/test.mat")
+# vp[:,:] = vel["vel"]
 
 Nsm=0
 if Nsm>0:

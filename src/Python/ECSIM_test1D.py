@@ -88,7 +88,7 @@ if __name__ == '__main__':
 
     coarse_ECSIM = Solvers.ECSIM(Np,Nx,Nsub_coarse,dt_coarse,qp, 1)
     fine_ECSIM = Solvers.ECSIM(Np,Nx,Nsub_fine,dt_fine,qp,1)
-    # para = Solvers.PararealSolver(max_para_iterations, fine_ECSIM,coarse_ECSIM,wp_E,wp_P)
+    para = Solvers.PararealSolver(max_para_iterations, fine_ECSIM,coarse_ECSIM,wp_E,wp_P)
     Xn = np.hstack((np.reshape(xp,(Np*xdim)),np.reshape(vp,(Np*vdim)),np.reshape(E0,(Nx*vdim)),np.reshape(Bc,(Nx*vdim))))
     # Xn = fine_ECSIM.Step(Xn,0,dt_fine)
     Ek,Ee,Eb = fine_ECSIM.Energy(Xn)
@@ -126,7 +126,7 @@ if __name__ == '__main__':
     #             plt.draw()
 
     time_start = time.perf_counter()
-    X1 = fine_ECSIM.Step(Xn,0,10)
+    X1 = fine_ECSIM.Step(Xn,0,(NT)*dt_coarse)
     time_end = time.perf_counter()
     print(f"serial simulation with subcycling {Nsub} energy conservation = {(Ek+Ee+Eb - sum(fine_ECSIM.Energy(X1)))/(Ek+Ee+Eb)}")
     print(f"Serial simulation of {NT} steps took {time_end-time_start:0.4f}s")

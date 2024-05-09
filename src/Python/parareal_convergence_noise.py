@@ -9,6 +9,8 @@ def parse_arguments():
     parser = argparse.ArgumentParser(description='Parareal convergence test')
     parser.add_argument('-c', '--coarse_dt', type=float, default=1e-2,
                         help='Set the value of coarse solver dt (default: 1e-2)')
+    parser.add_argument('-f', '--fine_dt', type=float, default=1e-4,
+                        help='Set the value of fine solver dt (default: 1e-4)')
     parser.add_argument('-tr', '--thresh', type=float, default=1e-8,
                         help='Set the value of threshold (default: 1e-8)')
     parser.add_argument('-N', '--N', type=int, default=10,
@@ -39,36 +41,30 @@ B = sp.sparse.csr_array(B)
 
 NT = (int)(args.T / args.coarse_dt)
 ts = np.linspace(0, args.T,NT + 1)
-refinement = 5
 
-F = Solvers.CrankNicholson(B, args.coarse_dt, args.thresh/100)
+F = Solvers.CrankNicholson(B, args.fine_dt, args.thresh/100)
 G = Solvers.CrankNicholson(B, args.coarse_dt, args.thresh/100)
-ref_solver = Solvers.CrankNicholson(B, args.coarse_dt/pow(2,refinement+3), 1e-15)
+ref_solver = Solvers.CrankNicholson(B, args.fine_dt/pow(2,3), 1e-15)
 
 parareal_solver = Solvers.PararealSolver(50, F, G, it_threshold=args.thresh)
 
-Xn = np.sin(2*np.linspace(0,L,args.N,endpoint=False)) + 5
-# Xn = np.random.randn(args.N)
-X_para= np.empty((args.N, NT + 1))
-Yn_ref = ref_solver.Step(Xn, 0, args.T)
-errors = np.zeros((refinement,3))
-convergence = np.zeros((refinement, 3))
-X_para[:,0] = Xn
-for i in range(refinement):
-	fine_dt = args.coarse_dt / pow(2,i)
-	F.dt = fine_dt
-	X_para = parareal_solver.Solve(Xn, ts)
-	Yn_ser = F.Step(Xn, 0, args.T)
-	errors[i, 0] = fine_dt
-	errors[i,1] = np.linalg.norm(X_para[-1,NT,:] - Yn_ref)/np.linalg.norm(Yn_ref)
-	errors[i,2] = np.linalg.norm(Yn_ser - Yn_ref)/np.linalg.norm(Yn_ref)
-	if (i > 0):
-		convergence[i, 0] = fine_dt
-		convergence[i,-2:] = errors[i,-2:] / errors[i-1,-2:]
-		print("Parareal convergence = ", convergence[i, 1])
-		print("Serial convergence = ", convergence[i, 2])
+# Xn = np.sin(2*np.linspace(0,L,args.N,endpoint=False)) + 5
+Xn = np.random.rand(args.N)
+Yn_ref = ref_solver.Step(Xn, 0, args.T,True)
+X_para = parareal_solver.Solve(Xn, ts)
+Y_ser = F.Step(Xn,0,args.T,True)
 
-print("Errors:", errors)
-print("Convergence:", convergence)
-print("coarse_dt/dx^2 = ", args.coarse_dt / dx / dx)
-# parareal_solver.__del__()
+print(Y_ser.shape)
+refinement = round(args.coarse_dt/args.fine_dt)
+ser_steps = list(range(0,Y_ser.shape[0],refinement))
+ref_steps = list(range(0,Yn_ref.shape[0],refinement*8))
+print(ser_steps)
+
+k = X_para.shape[0]
+max_errors = np.empty(k)
+for i in range(k):
+    max_errors[i] = np.max(np.linalg.norm((Yn_ref[ref_steps,:] - X_para[i,:,:]),axis=-1))
+print(max_errors)
+print(f"max fine error: {np.max(np.linalg.norm((Yn_ref[ref_steps,:] - Y_ser[ser_steps,:]),axis=-1))}")
+print(f"error compared to serial: {np.linalg.norm((X_para[-1,:,:] - Y_ser[ser_steps,:]),axis=-1)}")
+
