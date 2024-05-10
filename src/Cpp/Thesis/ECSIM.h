@@ -13,13 +13,13 @@ namespace TestProblems {
         double Vx = pow(dx, 1); // volumes of each of the grid cells (need regular grid)
         double mode = 3;    // mode of perturbation sin
         double VT = 0.01; // thermic velocity of particles in each direction
-        double V0 = 0.2;
+        double V0 = 0.8;
         double V1 = .1 * V0 * 0;
 
         xp = ArrayXd::LinSpaced(Np, 0, L - L / Np);
         vp = (VT * Array3Xd::Random(3, Np));
-        E0 = Array3Xd::Zero(3, Nx)/10;//initialization of electric field in each of the grid cells
-        //Bc = Array3Xd::Ones(3, Nx) / 10;
+        E0 = Array3Xd::Ones(3, Nx)/10;//initialization of electric field in each of the grid cells
+        //E0 = Array3Xd::Zero(3, Nx);
         Bc = Array3Xd::Zero(3, Nx);
         Bc.row(0) = ArrayXd::Ones(Nx) / 10;
 
@@ -64,10 +64,10 @@ namespace TestProblems {
     // 1D-1V
     int SetTwoStream(ArrayXd& xp, ArrayXd& vp, ArrayXd& E0, ArrayXd& Bc, ArrayXd& qp, int Nx = 128, int Np = 10000, double L = 2 * EIGEN_PI) {
         double dx = L / Nx;
-        double Vx = pow(L / Np, 1); // volumes of each of the grid cells (need regular grid)
+        double Vx = pow(L / Nx, 1); // volumes of each of the grid cells (need regular grid)
         double mode = 5;    // mode of perturbation sin
-        double VT = 0.02; // thermic velocity of particles in each direction
-        double V0 = 0.1;
+        double VT = 0.01; // thermic velocity of particles in each direction
+        double V0 = 0.2;
         double V1 = .1 * V0;
 
         xp = ArrayXd::LinSpaced(Np, 0, L - L / Np);
@@ -167,7 +167,7 @@ namespace TestProblems {
     }
 }
 
-template <int xdim,int vdim>
+template <int xdim,int vdim,typename P = Eigen::IdentityPreconditioner>
 class ECSIMBase {
 protected:
     double L; // length of position space
@@ -180,10 +180,10 @@ protected:
     double theta = 0.5; //theta of field and particle mover
     const ArrayXd& qp; // charge of each particle
     double Vx; // volume of regular grid
-    LinSolvers::LinSolver solver;
+    LinSolvers::LinSolver<P> solver;
 public:
     ECSIMBase(double L, int Np, int Nx, int Nsub, double dt, Eigen::ArrayXd const& qp, LinSolvers::SolverType type=LinSolvers::SolverType::LU)
-        :L(L), Np(Np), Nx(Nx), Nsub(Nsub), dt(dt), qp(qp),solver(type)
+        :L(L), Np(Np), Nx(Nx), Nsub(Nsub), dt(dt), qp(qp),solver(LinSolvers::LinSolver<P>(type))
     {
         dx = L / Nx;
         Vx = pow(dx, xdim);
@@ -318,38 +318,40 @@ public:
 
 };
 
-template <int xdim, int vdim>
-class ECSIM : public ECSIMBase<xdim, vdim> {
+template <int xdim, int vdim,typename P = Eigen::IdentityPreconditioner>
+class ECSIM : public ECSIMBase<xdim, vdim, P> {
 public:
-    using ECSIMBase<xdim, vdim>::ECSIMBase;
+    using ECSIMBase<xdim, vdim,P>::ECSIMBase;
 
     // yn is a 1D array and will only contain the state at t1
-    inline void Step(const Eigen::Ref<const MatrixXd> xn, double t0, double t1, Eigen::Ref<MatrixXd> yn) const {
+    inline ArrayXXd Step(const Eigen::Ref<const MatrixXd> xn, double t0, double t1, Eigen::Ref<MatrixXd> yn) const {
         throw std::runtime_error("Only vdim == 1 or vdim == 3 are supported");
+        return ArrayXXd(0, 0);
     }
     
     // yn is a 2D array and will contain the full simulation on exit
-    void Solve(const Eigen::Ref<const MatrixXd> xn, double t0, double t1, Eigen::Ref<MatrixXd> yn) const {
+    ArrayXXd Solve(const Eigen::Ref<const MatrixXd> xn, double t0, double t1, Eigen::Ref<MatrixXd> yn) const {
         throw std::runtime_error("Only vdim == 1 or vdim == 3 are supported");
+        return ArrayXXd(0, 0);
     }
 };
 
-template <int xdim>
-class ECSIM<xdim,1>: public ECSIMBase<xdim, 1> {
+template <int xdim, typename P>
+class ECSIM<xdim,1, P>: public ECSIMBase<xdim, 1, P> {
 public:
-    using ECSIMBase<xdim, 1>::ECSIMBase;
+    using ECSIMBase<xdim, 1, P>::ECSIMBase;
 
     // yn is a 1D array and will only contain the state at t1
-    inline void Step(const Eigen::Ref<const MatrixXd> xn, double t0, double t1, Eigen::Ref<MatrixXd> yn) const {
+    inline ArrayXXd Step(const Eigen::Ref<const MatrixXd> xn, double t0, double t1, Eigen::Ref<MatrixXd> yn) const {
         int nb_steps = round(abs(t1 - t0) / this->dt);
         MatrixXd steps(yn.rows(), nb_steps + 1);
-        Solve(xn, t0, t1, steps);
+        auto res = Solve(xn, t0, t1, steps);
         yn = steps.col(nb_steps);
-        return;
+        return res;
     }
     
     // yn is a 2D array and will contain the full simulation on exit
-    void Solve(const Eigen::Ref<const MatrixXd> xn, double t0, double t1, Eigen::Ref<MatrixXd> yn) const {
+    ArrayXXd Solve(const Eigen::Ref<const MatrixXd> xn, double t0, double t1, Eigen::Ref<MatrixXd> yn) const {
         yn.col(0) = xn;
 
         ArrayXd x_view = yn.col(0).head(this->Np);
@@ -376,13 +378,11 @@ public:
         Eigen::VectorXd bKrylov(this->Nx);
         Eigen::VectorXd xKrylov(this->Nx);
         Eigen::SparseMatrix<double> Maxwell(this->Nx, this->Nx);
-
-        SimplicialLDLT<SparseMatrix<double>> solver;
-
+        VectorXd x0 = VectorXd::Zero(this->Nx);
         // Eigen doesn't want to cast when this is not done
         int Nx = this->Nx;
         double dx = this->dx;
-
+        ArrayXXd timing_iteration = ArrayXXd(yn.cols() - 1, 3);
         for (int step = 0; step < yn.cols() - 1; step++) {
             auto tic = std::chrono::high_resolution_clock::now();
             for (int itsub = 0; itsub < this->Nsub; itsub++) {
@@ -406,18 +406,10 @@ public:
             bKrylov = E0 - J0 * this->dt * this->theta;
             Maxwell = NxIdentity + this->qom * this->dt * this->dt * this->theta / 2 / this->dx * M;
 
-            solver.compute(Maxwell);
-            if (solver.info() != Success) {
-                // decomposition failed
-                std::cerr << "Decomposition of Maxwell matrix failed" << std::endl;
-                return;
-            }
-            xKrylov = solver.solve(bKrylov);
-            if (solver.info() != Success) {
-                // solving failed
-                std::cerr << "Solving failed" << std::endl;
-                return;
-            }
+            auto tic_solve = std::chrono::high_resolution_clock::now();
+            xKrylov = this->solver.solve(Maxwell, bKrylov, x0);
+            auto toc_solve = std::chrono::high_resolution_clock::now();
+            timing_iteration.row(step) << step * this->dt, std::chrono::duration_cast<std::chrono::microseconds>(toc_solve - tic_solve).count(), this->solver.getIterations();
 
             E0 = (xKrylov.array() - E0 * (1 - this->theta)) / this->theta;
             for (int itsub = 0; itsub < this->Nsub; itsub++) {
@@ -429,26 +421,27 @@ public:
             double diff = abs((this->Energy(yn.col(step + 1)) - oldE).sum()) / abs(oldE.sum());
             //PRINT("Finished timestep", step, " in ", std::chrono::duration_cast<std::chrono::milliseconds>(toc - tic).count(), "ms with ", this->Nsub,"subcycles and energy conservation equal to ",diff);
         }
+        return timing_iteration;
     }
 };
 
-template <int xdim>
-class ECSIM<xdim, 3> :public ECSIMBase<xdim, 3> {
+template <int xdim, typename P>
+class ECSIM<xdim, 3, P> :public ECSIMBase<xdim, 3, P> {
 public:
-    using ECSIMBase<xdim, 3>::ECSIMBase;
+    using ECSIMBase<xdim, 3, P>::ECSIMBase;
 
     //yn is a 1D array and will only contain the state at t1
-    inline void Step(const Eigen::Ref<const MatrixXd> xn, double t0, double t1, Eigen::Ref<MatrixXd> yn) const {
+    inline ArrayXXd Step(const Eigen::Ref<const MatrixXd> xn, double t0, double t1, Eigen::Ref<MatrixXd> yn) const {
         int nb_steps = round(abs(t1 - t0) / this->dt);
         MatrixXd steps(yn.rows(), nb_steps + 1);
-        this->Solve(xn, t0, t1, steps);
+        auto res = this->Solve(xn, t0, t1, steps);
         yn = steps.col(nb_steps);
-        return;
+        return res;
     }
 
 
     //yn is a 2D array and will contain the full simulation on exit
-    void Solve(const Eigen::Ref<const MatrixXd> xn, double t0, double t1, Eigen::Ref<MatrixXd> yn) const {
+    ArrayXXd Solve(const Eigen::Ref<const MatrixXd> xn, double t0, double t1, Eigen::Ref<MatrixXd> yn) const {
         yn.col(0) = xn;
 
         ArrayXd x_view = yn.col(0).head(this->Np);
@@ -499,6 +492,7 @@ public:
         std::vector<Array3Xd> Bp(this->Nsub, Array3Xd(3, this->Np));
         std::vector<Array3Xd> vphat(this->Nsub, Array3Xd(3, this->Np));
         VectorXd x0 = VectorXd::Zero(5 * this->Nx);
+        ArrayXXd timing_iteration = ArrayXXd(yn.cols() - 1, 3);
         for (size_t step = 0; step < yn.cols() - 1; step++) {
             auto tic = std::chrono::high_resolution_clock::now();
 
@@ -668,7 +662,10 @@ public:
             }
             Maxwell.setFromTriplets(tripletListMaxwell.begin(), tripletListMaxwell.end());
 
+            auto tic_solve = std::chrono::high_resolution_clock::now();
             xKrylov = this->solver.solve(Maxwell, bKrylov, x0);
+            auto toc_solve = std::chrono::high_resolution_clock::now();
+            timing_iteration.row(step) << step * this->dt, std::chrono::duration_cast<std::chrono::microseconds>(toc_solve - tic_solve).count(), this->solver.getIterations();
 
             E0 = ((Map < Array<double,3,Dynamic,Eigen::RowMajor>>(xKrylov.data(), 3, this->Nx)) - E0 * (1 - this->theta)) / this->theta;
             Bc.row(1) = (xKrylov(seqN(3 * this->Nx, this->Nx)).array() - Bc.row(1).transpose() * (1 - this->theta)) / this->theta;
@@ -686,6 +683,7 @@ public:
             //PRINT("Finished timestep", step, " in ", std::chrono::duration_cast<std::chrono::milliseconds>(toc - tic).count(), "ms using ",this->Nsub, "subcycles and with relative energy conservation up to = ", diff);
 
         }
+        return timing_iteration;
     }
 
 };

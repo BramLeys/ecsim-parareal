@@ -25,12 +25,12 @@ public:
 	// X contains initial condition in first col on entry and full simulation result on exit
 	int Solve(MatrixXd& X, VectorXd& T) {
 		// Perform coarse simulation
-		auto tic = std::chrono::high_resolution_clock::now();
+		//auto tic = std::chrono::high_resolution_clock::now();
 		for (Eigen::Index i = 0; i < T.size()-1; i++) {
 			coarse.Step(X.col(i), T(i),T(i+1), X.col(i+ 1));
 		}
-		auto toc = std::chrono::high_resolution_clock::now();
-		PRINT("Finished first coarse simulation in ", std::chrono::duration_cast<std::chrono::milliseconds>(toc - tic).count(), "ms");
+		//auto toc = std::chrono::high_resolution_clock::now();
+		//PRINT("Finished first coarse simulation in ", std::chrono::duration_cast<std::chrono::milliseconds>(toc - tic).count(), "ms");
 		int fine_dim = (fine.Get_xdim() + fine.Get_vdim()) * fine.Get_Np() + (2 * fine.Get_vdim()) * fine.Get_Nx();
 		int coarse_dim = (coarse.Get_xdim() + coarse.Get_vdim()) * coarse.Get_Np() + (2 * coarse.Get_vdim()) * coarse.Get_Nx();
 		Eigen::MatrixXd fine_x(fine_dim, T.size() - 1), coarse_x(coarse_dim, T.size() - 1), new_coarse_x(coarse_dim, 1);
@@ -50,23 +50,23 @@ public:
 		while ((k < it) && (converged_until < T.size()-1)) {
 			auto paratic = std::chrono::high_resolution_clock::now();
 			k++;
-			tic = std::chrono::high_resolution_clock::now();
+			//tic = std::chrono::high_resolution_clock::now();
 			#pragma omp parallel for num_threads(num_threads)
 			for (int i = converged_until; i < T.size() - 1; i++) {
 				Eigen::MatrixXd refined_coarse_x(fine_dim, 1);
 				fine.Refine(X.col(i), coarse, refined_coarse_x);
 				fine.Step(refined_coarse_x, T(i), T(i + 1), fine_x.col(i));
 			}
-			toc = std::chrono::high_resolution_clock::now();
-			PRINT("Finished parallel section in ", std::chrono::duration_cast<std::chrono::milliseconds>(toc - tic).count(), "ms");
+			//toc = std::chrono::high_resolution_clock::now();
+			//PRINT("Finished parallel section in ", std::chrono::duration_cast<std::chrono::milliseconds>(toc - tic).count(), "ms");
 			previous_X = X;
-			double coarse_time = 0;
+			//double coarse_time = 0;
 			for (Eigen::Index i = converged_until; i < T.size() - 1; i++) {
-				tic = std::chrono::high_resolution_clock::now();
+				//tic = std::chrono::high_resolution_clock::now();
 				coarse.Step(X.col(i), T(i), T(i + 1), new_coarse_x);
 				coarse.Coarsen(fine_x.col(i), fine, coarsened_fine_x);
-				toc = std::chrono::high_resolution_clock::now();
-				coarse_time += std::chrono::duration_cast<std::chrono::milliseconds>(toc - tic).count();
+				//toc = std::chrono::high_resolution_clock::now();
+				//coarse_time += std::chrono::duration_cast<std::chrono::milliseconds>(toc - tic).count();
 				X.col(i + 1) = coarsened_fine_x + new_coarse_x - coarse_x.col(i);
 				coarse_x.col(i) = new_coarse_x;
 				if ((converged_until == i) && (coarse.Error(X.col(i + 1), previous_X.col(i + 1)).maxCoeff() <= thresh)) {
@@ -75,7 +75,7 @@ public:
 				diffs(k-1, 0) = k;
 				diffs.row(k-1).rightCols(4) = diffs.row(k - 1).rightCols(4).max(coarse.Error(X.col(i + 1), previous_X.col(i + 1)).transpose());
 			}
-			PRINT("Finished Coarse simulation in ", coarse_time, "ms");
+			//PRINT("Finished Coarse simulation in ", coarse_time, "ms");
 			//save("Parareal_states_iteration_" + std::to_string(k) + ".txt", X);
 			auto paratoc = std::chrono::high_resolution_clock::now();
 			PRINT("For iteration",k,": time taken =", std::chrono::duration_cast<std::chrono::milliseconds>(paratoc - paratic).count(),"ms,	max state change = ", diffs.row(k - 1).rightCols(4).maxCoeff(),"	and time steps until and including", converged_until, "have converged");

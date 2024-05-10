@@ -62,7 +62,7 @@ int ECSIM_3D_test(int argc, char* argv[]) {
     TestProblems::SetTransverse(xp, vp, E0, Bc, qp, Nx, Np, L);
     int NT = round(T / coarse_dt);
     auto coarse_solver = ECSIM<1, 3>(L, Np, Nx, Nsub, coarse_dt, qp,LinSolvers::SolverType::GMRES);
-    auto fine_solver = ECSIM<1, 3>(L, Np, fine_Nx, 1, fine_dt, qp, LinSolvers::SolverType::LU);
+    auto fine_solver = ECSIM<1, 3>(L, Np, fine_Nx, 1, fine_dt, qp, LinSolvers::SolverType::GMRES);
     auto para_solver = Parareal(fine_solver, coarse_solver, thresh, NT + 1, num_thr);
 
     VectorXd Xn(4 * Np + 6 * Nx);
