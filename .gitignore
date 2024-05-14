@@ -25,3 +25,9 @@ Literatuur/
 *.png
 *.eps
 *.exe
+/src/Cpp/Thesis/results/convergence_errors.txt
+/src/Cpp/Thesis/results/convergence_errors_parareal.txt
+/src/Cpp/Thesis/results/convergence_rate.txt
+/src/Cpp/Thesis/results/convergence_rate_parareal.txt
+/src/Cpp/Thesis/results/Parareal_max_state_changes.txt
+/src/Cpp/Thesis/test.exe
