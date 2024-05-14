@@ -11,13 +11,13 @@ using namespace Eigen;
 template <typename F, typename G>
 class Parareal {
 private:
-	F const& fine;
-	G const& coarse;
+	F & fine;
+	G & coarse;
 	int it;
 	double thresh;
 	int num_threads;
 public:
-	Parareal(F const& fine_solver, G const& coarse_solver, double threshold = 1e-8, int max_iterations = 50, int num_thr = 12)
+	Parareal(F & fine_solver, G & coarse_solver, double threshold = 1e-8, int max_iterations = 50, int num_thr = 12)
 		:fine(fine_solver), coarse(coarse_solver), thresh(threshold), it(max_iterations),num_threads(num_thr)
 	{}
 
@@ -33,9 +33,8 @@ public:
 		coarse_x = X.rightCols(coarse_x.cols());
 		// keeps track of parareal iteration 
 		int k = 0;
-		// the index up to which(inclusive) the algorithm has converged
+		// the index up to which (inclusive) the algorithm has converged
 		int converged_until = 0;
-		// Don't know if faster to copy one col each time or immediately copy full X matrix in temp
 		Eigen::MatrixXd previous_X(X.rows(), X.cols());
 		Eigen::ArrayXXd diffs = ArrayXXd::Zero(it, 4);
 		//save("Parareal_states_iteration_" + std::to_string(k) + ".txt", X);

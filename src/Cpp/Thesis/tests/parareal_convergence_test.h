@@ -17,6 +17,7 @@ int parareal_convergence_test(int argc, char* argv[])
 	double thresh = 1e-8;
 	double L = 2 * EIGEN_PI;
 	int refinement = 5;
+	std::string initialisation = "smooth";
 
 	for (int i = 1; i < argc; ++i) {
 		std::string arg = argv[i];
@@ -35,8 +36,15 @@ int parareal_convergence_test(int argc, char* argv[])
 		else if (arg == "-r" && i + 1 < argc) {
 			refinement = std::stoi(argv[++i]);
 		}
+		else if (arg == "-init" && i + 1 < argc) {
+			initialisation = argv[++i];
+			if (!(initialisation == "random" || initialisation == "smooth")) {
+				std::cerr << "Usage: " << argv[0] << " -t <time interval [0,t]> -c <coarse timestep> -tr <parareal threshold> -N <number of gridcells> -r <number of refinements> -init <'random'|'smooth'>" << std::endl;
+				return 1;
+			}
+		}
 		else {
-			std::cerr << "Usage: " << argv[0] << " -t <time interval [0,t]> -c <coarse timestep> -tr <parareal threshold> -N <number of gridcells> -r <number of refinements>" << std::endl;
+			std::cerr << "Usage: " << argv[0] << " -t <time interval [0,t]> -c <coarse timestep> -tr <parareal threshold> -N <number of gridcells> -r <number of refinements> -init <'random'|'smooth'>" << std::endl;
 			return 1;
 		}
 	}
@@ -79,31 +87,34 @@ int parareal_convergence_test(int argc, char* argv[])
 	int NT = (int)(T / coarse_dt);
 	VectorXd ts = VectorXd::LinSpaced(NT + 1, 0, T);
 
-	auto ref_solver = CrankNicolson(B, coarse_dt/pow(2,refinement+3));
-	auto F = CrankNicolson(B, fine_dt);
-	auto G = CrankNicolson(B, coarse_dt);
+	auto ref_solver = CrankNicolson(B, coarse_dt / pow(2, refinement-1)/50, 1e-15);
+	auto F = CrankNicolson(B, fine_dt, thresh / 100);
+	auto G = CrankNicolson(B, coarse_dt, thresh / 100);
 	//auto ref_solver = RK4<decltype(second_order)>(second_order, coarse_dt/pow(2,refinement+3));
 	//auto F = RK4<decltype(second_order)>(second_order,fine_dt);
 	//auto G = RK4<decltype(second_order)>(second_order,coarse_dt);
 
 	auto parareal_solver = Parareal<decltype(F), decltype(G)>(F, G, thresh);
 
-	//VectorXd Xn = (2 * ArrayXd::LinSpaced(N,0, L-dx)).sin() + 5;
-	VectorXd Xn = VectorXd::Random(N);
+	VectorXd Xn = VectorXd(N);
+	if (initialisation == "random")
+		Xn = VectorXd::Random(N);
+	else
+		Xn = (2 * ArrayXd::LinSpaced(N, 0, L - dx)).sin() + 5;
 	MatrixXd X_para(N, NT + 1);
 	VectorXd Yn_ref(N), Yn_ser(N);
 	ref_solver.Step(Xn, 0, T, Yn_ref);
-	ArrayXXd errors(refinement,3);
-	ArrayXXd convergence(refinement, 3);
+	ArrayXXd errors = ArrayXXd::Zero(refinement, 3);
+	ArrayXXd convergence = ArrayXXd::Zero(refinement, 3);
 	X_para.col(0) = Xn;
 	for (int i = 0; i < refinement; i++) {
-		fine_dt = coarse_dt / pow(2,i);
+		fine_dt = coarse_dt / pow(2, i);
 		F.Set_dt(fine_dt);
 		parareal_solver.Solve(X_para, ts);
 		F.Step(Xn, 0, T, Yn_ser);
 		errors(i, 0) = fine_dt;
-		errors(i,1) = (X_para.col(NT) - Yn_ref).norm()/Yn_ref.norm();
-		errors(i,2) = (Yn_ser - Yn_ref).norm()/Yn_ref.norm();
+		errors(i, 1) = (X_para.col(NT) - Yn_ref).norm() / Yn_ref.norm();
+		errors(i, 2) = (Yn_ser - Yn_ref).norm() / Yn_ref.norm();
 		if (i > 0) {
 			convergence(i, 0) = fine_dt;
 			convergence.row(i).rightCols(2) = errors.row(i).rightCols(2) / errors.row(i - 1).rightCols(2);

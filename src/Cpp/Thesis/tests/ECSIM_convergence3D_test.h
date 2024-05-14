@@ -10,7 +10,7 @@
 
 using namespace Eigen;
 
-int ECSIM_convergence_test(int argc, char* argv[]) {
+int ECSIM_convergence3D_test(int argc, char* argv[]) {
     int Nx = 128; // number of grid cells
     double L = 2 * EIGEN_PI; // Size of position space
     int Np = 10000; // number of particles
@@ -52,9 +52,6 @@ int ECSIM_convergence_test(int argc, char* argv[]) {
 
     TestProblems::SetTransverse(xp, vp, E0, Bc, qp, Nx, Np, L);
 
-    //ArrayXd xp(Np), qp(Np), vp(Np), E0(Nx), Bc(Nx);
-    //TestProblems::SetTwoStream(xp, vp, E0, Bc, qp, Nx, Np, L);
-
     auto G = ECSIM<1, 3>(L, Np, Nx, 1, dt, qp);
     auto solver = ECSIM<1, 3>(L, Np, Nx, 1, dt/100, qp);
     auto parareal = Parareal<decltype(solver), decltype(G)>(solver, G, thresh);
@@ -63,24 +60,23 @@ int ECSIM_convergence_test(int argc, char* argv[]) {
 
     VectorXd Xn(dimension);
     Xn.col(0) << xp, Map<const ArrayXd>(vp.data(), vp.size()), Map<const ArrayXd>(E0.data(), E0.size()), Map<const ArrayXd>(Bc.data(), Bc.size());
-    //solver.Step(Xn.col(0), 0, 10*dt, Xn.col(0));
 
     auto Eold = solver.Energy(Xn);
     VectorXd Yn_ref(dimension);
-    solver.Set_dt(dt / pow(2, refinements));
+    solver.Set_dt(dt / pow(2, refinements-1)/50);
     auto tic = std::chrono::high_resolution_clock::now();
     solver.Step(Xn, 0, T, Yn_ref);
     auto toc = std::chrono::high_resolution_clock::now();
     double serial_time = std::chrono::duration_cast<std::chrono::milliseconds>(toc - tic).count();
-    PRINT("REF simulation takes", serial_time, "ms");
-    PRINT("REF energy difference between beginning and end", abs((solver.Energy(Yn_ref) - Eold).sum()) / abs(Eold.sum()));
+    PRINT("REFERENCE simulation takes", serial_time, "ms");
+    PRINT("REFERENCE energy difference between beginning and end", abs((solver.Energy(Yn_ref) - Eold).sum()) / abs(Eold.sum()));
 
     int NT = round(T / dt);
     MatrixXd Yn_parareal(dimension, NT + 1);
     Yn_parareal.col(0) = Xn;
     VectorXd ts = VectorXd::LinSpaced(NT + 1, 0, T);
 
-    PRINT("================LINEAR CONVERGENCE================");
+    PRINT("================SERIAL CONVERGENCE================");
     ArrayXXd errors(refinements,5);
     ArrayXXd convergence(refinements, 5);
     VectorXd Yn = VectorXd::Zero(dimension);
@@ -105,28 +101,28 @@ int ECSIM_convergence_test(int argc, char* argv[]) {
     PRINT("CONVERGENCE = ", convergence);
     save("convergence_rate.txt", convergence);
     save("convergence_errors.txt", errors);
-    PRINT("================PARAREAL CONVERGENCE================");
-    for (int i = 0; i < refinements; i++) {
-        solver.Set_dt(dt / pow(2, i));
-        PRINT("DT = ", solver.Get_dt());
-        tic = std::chrono::high_resolution_clock::now();
-        parareal.Solve(Yn_parareal, ts);
-        toc = std::chrono::high_resolution_clock::now();
-        double time = std::chrono::duration_cast<std::chrono::milliseconds>(toc - tic).count();
-        PRINT("Parareal simulation takes", time, "ms");
-        PRINT("Energy difference parareal", abs((solver.Energy(Yn_parareal.col(NT)) - Eold).sum()) / abs(Eold.sum()));
-        errors(i, 0) = solver.Get_dt();
-        errors.row(i).rightCols(4) = solver.Error(Yn_parareal.col(NT), Yn_ref).transpose();
-        PRINT("Error in states of parareal compared to ref:", errors.row(i));
-        if (i > 0) {
-            convergence(i, 0) = solver.Get_dt();
-            convergence.row(i).rightCols(4) = errors.row(i).rightCols(4) / errors.row(i - 1).rightCols(4);
-        }
-    }
-    PRINT("ERRORS = ", errors);
-    PRINT("CONVERGENCE = ", convergence);
-    save("convergence_rate_parareal.txt", convergence);
-    save("convergence_errors_parareal.txt", errors);
+    //PRINT("================PARAREAL CONVERGENCE================");
+    //for (int i = 0; i < refinements; i++) {
+    //    solver.Set_dt(dt / pow(2, i));
+    //    PRINT("DT = ", solver.Get_dt());
+    //    tic = std::chrono::high_resolution_clock::now();
+    //    parareal.Solve(Yn_parareal, ts);
+    //    toc = std::chrono::high_resolution_clock::now();
+    //    double time = std::chrono::duration_cast<std::chrono::milliseconds>(toc - tic).count();
+    //    PRINT("Parareal simulation takes", time, "ms");
+    //    PRINT("Energy difference parareal", abs((solver.Energy(Yn_parareal.col(NT)) - Eold).sum()) / abs(Eold.sum()));
+    //    errors(i, 0) = solver.Get_dt();
+    //    errors.row(i).rightCols(4) = solver.Error(Yn_parareal.col(NT), Yn_ref).transpose();
+    //    PRINT("Error in states of parareal compared to ref:", errors.row(i));
+    //    if (i > 0) {
+    //        convergence(i, 0) = solver.Get_dt();
+    //        convergence.row(i).rightCols(4) = errors.row(i).rightCols(4) / errors.row(i - 1).rightCols(4);
+    //    }
+    //}
+    //PRINT("ERRORS = ", errors);
+    //PRINT("CONVERGENCE = ", convergence);
+    //save("convergence_rate_parareal.txt", convergence);
+    //save("convergence_errors_parareal.txt", errors);
     return 0;
 }
 

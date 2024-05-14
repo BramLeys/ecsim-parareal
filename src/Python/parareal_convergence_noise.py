@@ -48,8 +48,8 @@ ref_solver = Solvers.CrankNicholson(B, args.fine_dt/pow(2,3), 1e-15)
 
 parareal_solver = Solvers.PararealSolver(50, F, G, it_threshold=args.thresh)
 
-# Xn = np.sin(2*np.linspace(0,L,args.N,endpoint=False)) + 5
-Xn = np.random.rand(args.N)
+Xn = np.sin(2*np.linspace(0,L,args.N,endpoint=False)) + 5
+# Xn = np.random.rand(args.N)
 Yn_ref = ref_solver.Step(Xn, 0, args.T,True)
 X_para = parareal_solver.Solve(Xn, ts)
 Y_ser = F.Step(Xn,0,args.T,True)

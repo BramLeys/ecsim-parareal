@@ -47,8 +47,8 @@ ref_solver = Solvers.CrankNicholson(B, args.coarse_dt/pow(2,refinement+3), 1e-15
 
 parareal_solver = Solvers.PararealSolver(50, F, G, it_threshold=args.thresh)
 
-Xn = np.sin(2*np.linspace(0,L,args.N,endpoint=False)) + 5
-# Xn = np.random.randn(args.N)
+# Xn = np.sin(2*np.linspace(0,L,args.N,endpoint=False)) + 5
+Xn = np.random.randn(args.N)
 X_para= np.empty((args.N, NT + 1))
 Yn_ref = ref_solver.Step(Xn, 0, args.T)
 errors = np.zeros((refinement,3))

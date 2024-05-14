@@ -1,7 +1,7 @@
 #ifndef ODE_SOLVERS_H
 #define ODE_SOLVERS_H
 #include <Eigen/Dense>
-#include <Eigen/SparseLU>
+#include <unsupported/Eigen/IterativeSolvers>
 
 // Eigen is column-major by default
 using namespace Eigen;
@@ -89,14 +89,17 @@ class CrankNicolson {
 private:
 	double dt;
 	const SparseMatrix<double>& A;
-	Eigen::SparseLU< SparseMatrix<double>> solver;
+	Eigen::BiCGSTAB<Eigen::SparseMatrix<double>, Eigen::IdentityPreconditioner> solver;
+	//SparseLU<SparseMatrix<double>> solver;
 
 public:
-	CrankNicolson(const SparseMatrix<double>& A, double dt)
+	CrankNicolson(const SparseMatrix<double>& A, double dt, double tol=1e-10)
 		:A(A), dt(dt)
 	{
 		SparseMatrix<double> I(A.rows(), A.cols());
 		I.setIdentity();
+		solver.setTolerance(tol);
+		solver.setMaxIterations(100);
 		solver.compute(I - dt * 0.5 * A);
 	}
 

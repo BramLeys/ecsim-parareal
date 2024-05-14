@@ -250,7 +250,6 @@ class ECSIM:
         x[0,:] = yn
         xp = np.tile(xi,(self.Nsub,1))
         for n in np.arange(1,nb_steps+1):
-            print(f"----------------iteration {n}----------------")
             # watch(xp)
             xp += vp[:,0]*self.dt/self.Nsub*np.arange(1,self.Nsub+1)[:,None]
             # watch(xp)
@@ -328,7 +327,6 @@ class ECSIM:
             Ek, Ee, Eb = self.Energy(x[n,:])
             diff = abs((Ek - Ekold) + (Ee - Eeold) + (Eb - Ebold))/(Ekold+Eeold+Ebold)
             # print(Ek,Ee,Eb)
-            print(f"Energy difference {diff}")
             if diff>1e-15:
                 print(f"dt = {self.dt} and iteration {n}, going from time {tn} to {tn+self.dt*(n)}, does not conserve energy with diff = {diff}")
                     
@@ -518,10 +516,10 @@ class PararealSolver:
                 X[k,j+1,:] = new_coarse_x + fine_x[j,:] - coarse_x[j,:]
                 coarse_x[j,:] = np.copy(new_coarse_x)
                 # check for convergence
-                if np.max(np.linalg.norm(X[k,:,:]-X[k-1,:,:],axis=-1)/np.linalg.norm(X[k,:,:],axis=-1))<=self.it_threshold:
-                   return X[:k+1,:,:]
-                # if((j == converged_until) and (np.linalg.norm(X[k,j+1,:]-X[k-1,j+1,:])<=self.it_threshold *np.linalg.norm(X[k,j+1,:]))):
-                #     converged_until += 1
+                # if np.max(np.linalg.norm(X[k,:,:]-X[k-1,:,:],axis=-1)/np.linalg.norm(X[k,:,:],axis=-1))<=self.it_threshold:
+                #    return X[:k+1,:,:]
+                if((j == converged_until) and (np.linalg.norm(X[k,j+1,:]-X[k-1,j+1,:])<=self.it_threshold *np.linalg.norm(X[k,j+1,:]))):
+                    converged_until += 1
             print(f"For iteration {k} max relative state change: {np.max(np.linalg.norm((X[k,:,:]-X[k-1,:,:]),axis=1)/np.linalg.norm(X[k,:,:],axis=1))} and time steps until and including {converged_until} have converged.")
         return X[:k+1,:,:]
     

@@ -14,10 +14,8 @@ namespace TestProblems {
     int SetTransverse(ArrayXd& xp, Array3Xd& vp, Array3Xd& E0, Array3Xd& Bc, ArrayXd& qp, int Nx = 128, int Np = 10000, double L = 2 * EIGEN_PI) {
         double dx = L / Nx; 
         double Vx = pow(dx, 1); // volumes of each of the grid cells (need regular grid)
-        double mode = 3;    // mode of perturbation sin
         double VT = 0.01; // thermic velocity of particles in each direction
         double V0 = 0.2;
-        double V1 = .1 * V0 * 0;
 
         xp = ArrayXd::LinSpaced(Np, 0, L - L / Np);
         vp = (VT * Array3Xd::Random(3, Np));
@@ -30,7 +28,7 @@ namespace TestProblems {
 
         ArrayXd pm =ArrayXd::LinSpaced(Np, 1, Np);
         pm = 1 - 2 * mod(pm, 2).cast<double>();
-        vp.row(1) += pm * V0 + V1 * (2 * EIGEN_PI * xp / L * mode).sin();
+        vp.row(1) += pm * V0;
 
         ArrayXi ix = (xp / dx).floor().cast<int>(); // cell of the particle, first cell is cell 0, first node is 0 last node Nx
         ArrayXd frac1 = 1 - (xp / dx - ix.cast<double>()); // W_{pg}
@@ -73,7 +71,7 @@ namespace TestProblems {
     int SetTwoStream(ArrayXd& xp, ArrayXd& vp, ArrayXd& E0, ArrayXd& Bc, ArrayXd& qp, int Nx = 128, int Np = 10000, double L = 2 * EIGEN_PI) {
         double dx = L / Nx;
         double Vx = pow(dx, 1); // volumes of each of the grid cells (need regular grid)
-        double mode = 5;    // mode of perturbation sin
+        double mode = 5;    // mode of perturbation sine
         double VT = 0.02; // thermic velocity of particles in each direction
         double V0 = 0.1;
         double V1 = .1 * V0;
@@ -441,15 +439,8 @@ public:
         std::vector<Array3Xd> Bp(this->Nsub, Array3Xd(3, this->Np));
         std::vector<Array3Xd> vphat(this->Nsub, Array3Xd(3, this->Np));
 
-        //watch(this->qp);
-
         for (size_t step = 0; step < yn.cols() - 1; step++) {
             auto tic = std::chrono::high_resolution_clock::now();
-            
-            //watch(x_view);
-            //watch(vp);
-            //watch(E0);
-            //watch(Bc);
 
             B.rightCols(B.cols() - 1) = 0.5 * (Bc.rightCols(B.cols() - 1) + Bc.leftCols(B.cols() - 1));
             B.col(0) = 0.5 * (Bc.col(B.cols() - 1) + Bc.col(0));
@@ -501,24 +492,13 @@ public:
                     J0.col(ix2(ip, itsub)) += (1 - frac1(ip, itsub)) * this->qp(ip) * vphat[itsub].col(ip);
                 }
             }
-            //watch(Bp[0]);
-            //watch(vphat[0]);
-            //ArrayXd::Index ind1, ind2;
-            //vphat[0].abs().maxCoeff(&ind1, &ind2);
-            //PRINT("largest vphat element index = ", ind1,ind2);
+
             J0 /= this->Vx * this->Nsub;
-            //watch(ix);
-            ////watch(ix2);
-            //frac1.abs().maxCoeff(&ind1, &ind2);
-            //PRINT("largest frac1 element index = ", ind1,ind2);
-            //watch(frac1);
-            //watch(J0);
             // Setting Ms in columnmajor ordering -> [M0_0, M1_0, M2_0, M0_1, M1_1, M2_1, ...]
             for (int j = 0; j < 3; j++) {
                 for (int i = 0; i < 3; i++) {
                     Ms[3 * j + i].resize(this->Nx, this->Nx);
                     Ms[3 * j + i].setFromTriplets(tripletListM[3 * j + i].begin(), tripletListM[3 * j + i].end());
-                    //watch(Ms[3 * j + i].toDense().array());
                 }
             }
 
@@ -539,7 +519,6 @@ public:
             bKrylov << (E0.row(0) - J0.row(0) * this->dt * this->theta).transpose(), (E0.row(1) - J0.row(1) * this->dt * this->theta).transpose(), (E0.row(2) - J0.row(2) * this->dt * this->theta).transpose(), Bc.row(1).transpose(), Bc.row(2).transpose();
             tripletListMaxwell.resize(AmpereX.nonZeros() + AmpereY.nonZeros() + AmpereZ.nonZeros() + Ms[1].nonZeros() + Ms[2].nonZeros() + Ms[3].nonZeros() +
                 Ms[5].nonZeros() + Ms[6].nonZeros() + Ms[7].nonZeros() + 2 * Derv.nonZeros() + 2 * Derc.nonZeros() + 2 * this->Nx);
-            //watch(bKrylov.array());
 
             int index = 0;
             // First Rowblock

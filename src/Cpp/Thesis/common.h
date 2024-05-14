@@ -12,6 +12,7 @@
 
 const std::string filepath = "results/";
 
+
 template<typename T>
 struct ModuloOp {
     const T modulus;
