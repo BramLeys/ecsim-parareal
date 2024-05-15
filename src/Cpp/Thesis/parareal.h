@@ -76,7 +76,7 @@ public:
 
 		}
 		PRINT("Parareal took", k, "iterations.");
-		save("Parareal_max_state_changes.txt", diffs.topRows(k));
+		save("parareal_iteration_information.txt", diffs.topRows(k));
 		return k;
 	}
 };

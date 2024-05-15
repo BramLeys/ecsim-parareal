@@ -97,8 +97,7 @@ int ECSIM_convergence1D_test(int argc, char* argv[]) {
     }
     PRINT("ERRORS = ", errors);
     PRINT("CONVERGENCE = ", convergence);
-    save("convergence_rate.txt", convergence);
-    save("convergence_errors.txt", errors);
+    save("ecsim1D_convergence_errors.txt", errors);
 
     //PRINT("================PARAREAL CONVERGENCE================");
     //for (int i = 0; i < refinements; i++) {

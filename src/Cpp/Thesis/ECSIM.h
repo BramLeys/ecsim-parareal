@@ -19,10 +19,8 @@ namespace TestProblems {
 
         xp = ArrayXd::LinSpaced(Np, 0, L - L / Np);
         vp = (VT * Array3Xd::Random(3, Np));
-        //for (int i = 0; i < 3; i++) {
-        //    vp.row(i) = VT * ArrayXd::LinSpaced(Np, -1, 1);
-        //}
         E0 = Array3Xd::Ones(3, Nx)/10;//initialization of electric field in each of the grid cells
+        //E0 = Array3Xd::Zero(3, Nx);
         Bc = Array3Xd::Zero(3, Nx);
         Bc.row(0) = ArrayXd::Ones(Nx) / 10;
 
@@ -423,8 +421,8 @@ public:
 
         Eigen::SparseMatrix<double> Maxwell(5 * this->Nx, 5 * this->Nx);
 
-        //SparseLU<SparseMatrix<double>> solver;
-        GMRES<SparseMatrix<double>, IdentityPreconditioner> solver;
+        SparseLU<SparseMatrix<double>> solver;
+        //GMRES<SparseMatrix<double>, IdentityPreconditioner> solver;
 
         std::vector<Triplet<double>> tripletListMaxwell;
 
@@ -471,8 +469,6 @@ public:
                     alphap[itsub * this->Np + ip].array() /= 1 + (Bp[itsub].col(ip) * (beta)).pow(2).sum();
 
                     vphat[itsub].col(ip) = alphap[itsub * this->Np + ip] * vp.col(ip).matrix();
-                    //J0.col(ix(ip, itsub)) += frac1(ip, itsub) * this->qp(ip) * vphat[itsub].col(ip);
-                    //J0.col(ix2(ip, itsub)) += (1 - frac1(ip, itsub)) * this->qp(ip) * vphat[itsub].col(ip);
 
                 }
                 for (int j = 0; j < 3; j++) {
@@ -603,50 +599,12 @@ public:
             for (int k = 0; k < this->Nx; ++k) {
                 tripletListMaxwell[index++] = Triplet<double>(k + 4 * this->Nx, k + 4 * this->Nx, 1);
             }
-             
-
-            //Maxwell = (MatrixXd(5 * this->Nx, 5 * this->Nx) << AmpereX, this->qom * this->dt * this->dt * this->theta / 2 * Ms[3] / this->dx, this->qom * this->dt * this->dt * this->theta / 2 * Ms[6] / this->dx, NxZeros, NxZeros,
-            //    this->qom * this->dt * this->dt * this->theta / 2 * Ms[1] / this->dx, AmpereY, this->qom * this->dt * this->dt * this->theta / 2 * Ms[7] / this->dx, NxZeros, Derv * this->dt * this->theta,
-            //    this->qom * this->dt * this->dt * this->theta / 2 * Ms[2] / this->dx, this->qom * this->dt * this->dt * this->theta / 2 * Ms[5] / this->dx, AmpereZ, -Derv * this->dt * this->theta, NxZeros,
-            //    NxZeros, NxZeros, -Derc * this->dt * this->theta, NxIdentity, NxZeros,
-            //    NxZeros, Derc * this->dt * this->theta, NxZeros, NxZeros, NxIdentity).finished().sparseView();
-
-            //Maxwell.leftCols(this->Nx) = AmpereX, this->qom* this->dt* this->dt* this->theta / 2 * Ms[1] / this->dx, this->qom* this->dt* this->dt* this->theta / 2 * Ms[2] / this->dx, NxZeros, NxZeros;
-            //Maxwell.middleCols(this->Nx, this->Nx) = this->qom * this->dt * this->dt * this->theta / 2 * Ms[3] / this->dx, AmpereY, this->qom* this->dt* this->dt* this->theta / 2 * Ms[5] / this->dx, NxZeros, Derc* this->dt* this->theta;
-            //Maxwell.middleCols(2 * this->Nx, this->Nx) = this->qom * this->dt * this->dt * this->theta / 2 * Ms[6] / this->dx, this->qom* this->dt* this->dt* this->theta / 2 * Ms[7] / this->dx, AmpereZ, -Derc * this->dt * this->theta, NxZeros;
-            //Maxwell.middleCols(3 * this->Nx, this->Nx) = NxZeros, NxZeros, -Derv * this->dt * this->theta, NxIdentity, NxZeros;
-            //Maxwell.rightCols(this->Nx) = NxZeros, Derv* this->dt* this->theta, NxZeros, NxZeros, NxIdentity;
-            //Maxwell.makeCompressed();
             Maxwell.setFromTriplets(tripletListMaxwell.begin(), tripletListMaxwell.end());
-            //watch(Maxwell.toDense().array());
 
-            //GMRES (unsupported Eigen function)
-            //auto gmres_tic = std::chrono::high_resolution_clock::now();
             //auto x0 = MatrixXd(1,5 * Nx);
             //x0 << E0.row(0), E0.row(1), E0.row(2), Bc.row(1), Bc.row(2);
             solver.compute(Maxwell);
             xKrylov = solver.solve(bKrylov);
-            //auto gmres_toc = std::chrono::high_resolution_clock::now();
-            //double gmres_time = std::chrono::duration_cast<std::chrono::milliseconds>(gmres_toc - gmres_tic).count();
-            //PRINT("GMRES TOOK", gmres_time, "ms");
-
-            // LU
-            //auto LU_tic = std::chrono::high_resolution_clock::now();
-            //solver.compute(Maxwell);
-            //if (solver.info() != Success) {
-            //    // decomposition failed
-            //    std::cerr << "Decomposition of Maxwell matrix failed" << std::endl;
-            //    return;
-            //}
-            //xKrylov = solver.solve(bKrylov);
-            //if (solver.info() != Success) {
-            //    // solving failed
-            //    std::cerr << "Solving failed" << std::endl;
-            //    return;
-            //}
-            //auto LU_toc = std::chrono::high_resolution_clock::now();
-            //double LU_time = std::chrono::duration_cast<std::chrono::milliseconds>(LU_toc - LU_tic).count();
-            //PRINT("LU TOOK", LU_time, "ms");
 
 
             E0 = ((Map < Array<double,3,Dynamic,Eigen::RowMajor>>(xKrylov.data(), 3, this->Nx)) - E0 * (1 - this->theta)) / this->theta;

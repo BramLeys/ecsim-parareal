@@ -92,6 +92,8 @@ int ECSIM_3D_test(int argc, char* argv[]) {
     PRINT("Parareal without subcycling takes", para_time / serial_time, "as long as the serial version");
     PRINT("Energy difference parareal", abs((fine_solver.Energy(Xn_para.col(NT)) - Eold).sum()) / abs(Eold.sum()));
     PRINT("Error in states of parareal compared to serial:", fine_solver.Error(Yn.col(NT), Xn_para.col(NT)));
+    PRINT("ELECTRIC FIELD:", Xn_para.col(NT)(seqN(4*Np,3*Nx)));
+    PRINT("MAGNETIC FIELD:", Xn_para.col(NT)(seqN(4 * Np + 3*Nx, 3 * Nx)));
 
     //auto temp = fine_solver.Divergence(Xn_para);
     //for (int i = 0; i < temp.cols();i++) {

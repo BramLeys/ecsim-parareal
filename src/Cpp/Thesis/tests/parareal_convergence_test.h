@@ -102,31 +102,32 @@ int parareal_convergence_test(int argc, char* argv[])
 	else
 		Xn = (2 * ArrayXd::LinSpaced(N, 0, L - dx)).sin() + 5;
 	MatrixXd X_para(N, NT + 1);
-	VectorXd Yn_ref(N), Yn_ser(N);
+	VectorXd Yn_ref(N);
+	MatrixXd Yn_ser(N, NT + 1);
 	ref_solver.Step(Xn, 0, T, Yn_ref);
+	PRINT("Reference norm:", Yn_ref.norm());
 	ArrayXXd errors = ArrayXXd::Zero(refinement, 3);
 	ArrayXXd convergence = ArrayXXd::Zero(refinement, 3);
 	X_para.col(0) = Xn;
+	Yn_ser.col(0) = Xn;
 	for (int i = 0; i < refinement; i++) {
 		fine_dt = coarse_dt / pow(2, i);
 		F.Set_dt(fine_dt);
-		parareal_solver.Solve(X_para, ts);
-		F.Step(Xn, 0, T, Yn_ser);
+		for(int j = 0; j < NT; j++)
+			F.Step(Yn_ser.col(j), ts(j), ts(j+1), Yn_ser.col(j+1));
+		parareal_solver.Solve(X_para, ts, &Yn_ser);
 		errors(i, 0) = fine_dt;
 		errors(i, 1) = (X_para.col(NT) - Yn_ref).norm() / Yn_ref.norm();
-		errors(i, 2) = (Yn_ser - Yn_ref).norm() / Yn_ref.norm();
+		errors(i, 2) = (Yn_ser.col(NT) - Yn_ref).norm() / Yn_ref.norm();
 		if (i > 0) {
 			convergence(i, 0) = fine_dt;
 			convergence.row(i).rightCols(2) = errors.row(i).rightCols(2) / errors.row(i - 1).rightCols(2);
-			PRINT("Parareal convergence = ", convergence(i, 1));
-			PRINT("Serial convergence = ", convergence(i, 2));
 		}
 	}
 	PRINT("coarse_dt/dx^2 = ", coarse_dt / dx / dx);
 	PRINT("Errors:", errors);
 	PRINT("Convergence:", convergence);
-	save("convergence_errors.txt", errors);
-	save("convergence_rate.txt", convergence);
+	save("cn_convergence_errors.txt", errors);
 	return 0;
 }
 #endif

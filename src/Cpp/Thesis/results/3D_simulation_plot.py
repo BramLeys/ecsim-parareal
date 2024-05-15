@@ -14,8 +14,8 @@ from matplotlib import rc
 rc('text', usetex=True)
 
 ### Read files
-data = np.loadtxt("./simulation_result1D.txt")
-energy = np.loadtxt("./simulation_energy1D.txt")
+data = np.loadtxt("./simulation_result3D.txt")
+energy = np.loadtxt("./simulation_energy3D.txt")
 
 ### Set parameters
 Np = 10000
@@ -25,9 +25,9 @@ print(data.shape)
 print(energy.shape)
 
 x = data[:Np,: ]
-v = data[Np:2*Np, :]
-E = data[2*Np: 2*Np + 1*Nx,:]
-B = data[2*Np + 1*Nx:,:]
+v = data[Np:4*Np, :]
+E = data[4*Np: 4*Np + 3*Nx,:]
+B = data[4*Np + 3*Nx:,:]
 print(B.shape)
 print(E.shape)
 
@@ -42,21 +42,21 @@ plt.subplot(1, 3, 1)
 time_step = 0
 ### Velocity along Y
 x_t = x[:,time_step].reshape(Np,1)
-v_t = v[:, time_step].reshape(Np, 1)
-# negative = np.where(v_t[:, 1] < 0)[0]
-# positive = np.where(v_t[:, 1] >= 0 )[0]
+v_t = v[:, time_step].reshape(Np, 3)
+negative = np.where(v_t[:, 1] < 0)[0]
+positive = np.where(v_t[:, 1] >= 0 )[0]
 
 ### ========================================================================== ####
 
-plt.scatter(x_t, v_t, c = "blue", marker = ".")
-# plt.scatter(x_t[negative], v_t[negative, 0], c = "red", marker = ".")
+plt.scatter(x_t[negative], v_t[negative, 0], c = "red", marker = ".")
+plt.scatter(x_t[positive], v_t[positive, 0], c = "blue", marker = ".")
 
 plt.xlim(0, 2*np.pi)
 plt.yticks([-0.10, -0.05, 0.00, 0.05, 0.10])
 
 plt.title("Phase Space", fontsize = 24)
 plt.xlabel("X (m)", fontsize = 22)
-plt.ylabel("Velocity \n(m/s)", fontsize = 22)
+plt.ylabel("Velocity along X\n(m/s)", fontsize = 22)
 
 plt.tick_params(axis = 'x', which = 'major', labelsize = 18, length = 8)
 plt.tick_params(axis = 'y', which = 'major', labelsize = 20, length = 8)
@@ -68,22 +68,22 @@ plt.subplot(1, 3, 2)
 time_step = 1
 ### Velocity along Y
 x_t = x[:,time_step].reshape(Np,1)
-v_t = v[:, time_step].reshape(Np, 1)
-# negative = np.where(v_t[:, 1] < 0)[0]
-# positive = np.where(v_t[:, 1] >= 0 )[0]
+v_t = v[:, time_step].reshape(Np, 3)
+negative = np.where(v_t[:, 1] < 0)[0]
+positive = np.where(v_t[:, 1] >= 0 )[0]
 
 ### ========================================================================== ####
 
-plt.scatter(x_t, v_t, c = "blue", marker = ".")
-# plt.scatter(x_t[positive], v_t[positive, 0], c = "blue", marker = ".")
-# plt.scatter(x_t[negative], v_t[negative, 0], c = "red", marker = ".")
+# plt.scatter(x_t, v_t, c = "blue", marker = ".")
+plt.scatter(x_t[positive], v_t[positive, 0], c = "blue", marker = ".")
+plt.scatter(x_t[negative], v_t[negative, 0], c = "red", marker = ".")
 
 plt.xlim(0, 2*np.pi)
 plt.yticks([-0.10, -0.05, 0.00, 0.05, 0.10])
 
 plt.title("Phase Space", fontsize = 24)
 plt.xlabel("X (m)", fontsize = 22)
-plt.ylabel("Velocity \n(m/s) ", fontsize = 22)
+plt.ylabel("Velocity along X\n(m/s) ", fontsize = 22)
 
 plt.tick_params(axis = 'x', which = 'major', labelsize = 18, length = 8)
 plt.tick_params(axis = 'y', which = 'major', labelsize = 20, length = 8)
@@ -107,6 +107,6 @@ plt.xlim(-0.2, NT*dt + 0.3)
 ### ----------------------------------- ###
 
 fig.tight_layout(rect = [0.0, 0.0, 1.0, 1.0])
-plt.savefig("./Sim_plots_1D.eps")
+plt.savefig("./Sim_plots_3D.eps")
 
 ### ========================================================================== ####
