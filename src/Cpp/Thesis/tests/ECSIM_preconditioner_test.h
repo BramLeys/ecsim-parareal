@@ -74,24 +74,24 @@ int ECSIM_precond_test(int argc, char* argv[]) {
         dia_solver.Set_dt(refined_dt);
         LU_solver.Set_dt(refined_dt);
         tic = std::chrono::high_resolution_clock::now();
-        int id_iter = id_solver.Step(Xn, 0, T, Yn);
+        auto id_iter = id_solver.Step(Xn, 0, T, Yn);
         toc = std::chrono::high_resolution_clock::now();
         double id_time = std::chrono::duration_cast<std::chrono::milliseconds>(toc - tic).count();
-        PRINT("Identity Preconditioner simulation takes", id_time, "ms and BICGSTAB takes", id_iter, "iterations and energy conservation = ", abs((id_solver.Energy(Yn) - Eold).sum()) / abs(Eold.sum()));
+        PRINT("Identity Preconditioner simulation takes", id_time, "ms and BICGSTAB takes", id_iter.col(2).mean(), "iterations and energy conservation = ", abs((id_solver.Energy(Yn) - Eold).sum()) / abs(Eold.sum()));
 
         tic = std::chrono::high_resolution_clock::now();
-        int dia_iter = dia_solver.Step(Xn, 0, T, Yn);
+        auto dia_iter = dia_solver.Step(Xn, 0, T, Yn);
         toc = std::chrono::high_resolution_clock::now();
         double dia_time = std::chrono::duration_cast<std::chrono::milliseconds>(toc - tic).count();
-        PRINT("Diagonal Preconditioner simulation takes", dia_time, "ms and BICGSTAB takes", dia_iter, "iterations and energy conservation = ", abs((dia_solver.Energy(Yn) - Eold).sum()) / abs(Eold.sum()));
+        PRINT("Diagonal Preconditioner simulation takes", dia_time, "ms and BICGSTAB takes", dia_iter.col(2).mean(), "iterations and energy conservation = ", abs((dia_solver.Energy(Yn) - Eold).sum()) / abs(Eold.sum()));
 
         tic = std::chrono::high_resolution_clock::now();
-        int lu_iter = LU_solver.Step(Xn, 0, T, Yn);
+        auto lu_iter = LU_solver.Step(Xn, 0, T, Yn);
         toc = std::chrono::high_resolution_clock::now();
         double lu_time = std::chrono::duration_cast<std::chrono::milliseconds>(toc - tic).count();
-        PRINT("Incomplete LU Preconditioner simulation takes", lu_time, "ms and BICGSTAB takes", lu_iter, "iterations and energy conservation = ", abs((LU_solver.Energy(Yn) - Eold).sum()) / abs(Eold.sum()));
+        PRINT("Incomplete LU Preconditioner simulation takes", lu_time, "ms and BICGSTAB takes", lu_iter.col(2).mean(), "iterations and energy conservation = ", abs((LU_solver.Energy(Yn) - Eold).sum()) / abs(Eold.sum()));
         timings.row(i) << refined_dt, id_time, dia_time, lu_time;
-        iterations.row(i) << refined_dt,id_iter, dia_iter, lu_iter;
+        iterations.row(i) << refined_dt, id_iter.col(2).mean(), dia_iter.col(2).mean(), lu_iter.col(2).mean();
     }
     PRINT("TIMINGS:\t IDENTITY \t DIAGONAL \t Incomplete LUT");
     PRINT(timings);

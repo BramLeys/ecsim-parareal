@@ -54,7 +54,7 @@ int ECSIM_3D_test(int argc, char* argv[]) {
         }
     }
     T = T == 0 ? num_thr * coarse_dt : T;
-    PRINT("Simulating on", num_thr, "cores with time interval = [0, ", T, "], coarse timestep =", coarse_dt, ", fine timestep =", fine_dt, "and", Nsub,"subcycles for the coarse solver.");
+    PRINT("Simulating on", num_thr, "cores with time interval = [0, ", T, "], coarse timestep =", coarse_dt, ", fine timestep =", fine_dt, ",", Nsub,"subcycles and Nx = ", Nx);
     
     ArrayXd xp(Np), qp(Np);
     Array3Xd vp(3, Np), E0(3,Nx), Bc(3,Nx);
@@ -67,7 +67,6 @@ int ECSIM_3D_test(int argc, char* argv[]) {
 
     VectorXd Xn(4 * Np + 6 * Nx);
     Xn.col(0) << xp, Map<const ArrayXd>(vp.data(), vp.size()), Map<const ArrayXd>(E0.data(), E0.size()), Map<const ArrayXd>(Bc.data(), Bc.size());
-    //coarse_solver.Step(Xn, 0, 10*coarse_dt, Xn); // Get into regime for E and B
 
     auto Eold = coarse_solver.Energy(Xn);
     VectorXd Yn(4 * Np + 6 * fine_Nx), fine_Xn(4 * Np + 6 * fine_Nx);
@@ -93,9 +92,9 @@ int ECSIM_3D_test(int argc, char* argv[]) {
     toc = std::chrono::high_resolution_clock::now();
     double para_time = std::chrono::duration_cast<std::chrono::milliseconds>(toc - tic).count();
     PRINT("PARAREAL simulation takes", para_time, "ms");
-    PRINT("Speedup =", serial_time/para_time);
     PRINT("Energy difference parareal", abs((coarse_solver.Energy(Xn_para.col(NT)) - Eold).sum()) / abs(Eold.sum()));
     PRINT("Error in states of parareal compared to serial:", coarse_solver.Error(coarse_Yn, Xn_para.col(NT)));
+    std::cout << "Speedup = " << serial_time / para_time << std::endl;
 
     return 0;
 }

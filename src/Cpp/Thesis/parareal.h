@@ -21,6 +21,8 @@ public:
 		:fine(fine_solver), coarse(coarse_solver), thresh(threshold), it(max_iterations),num_threads(num_thr)
 	{}
 
+	void setNumThreads(int nb_threads) { num_threads = nb_threads; }
+
 	// T contains all timesteps at which states are found (initial conditions included -> N+1, where N is number of timesteps)
 	// X contains initial condition in first col on entry and full simulation result on exit
 	int Solve(MatrixXd& X, VectorXd& T) {
@@ -37,7 +39,7 @@ public:
 		Eigen::MatrixXd coarsened_fine_x(coarse_dim, 1);
 		coarse_x = X.rightCols(coarse_x.cols());
 
-		auto Etot0 = coarse.Energy(X.col(0)).sum();
+		//auto Etot0 = coarse.Energy(X.col(0)).sum();
 
 		// keeps track of parareal iteration 
 		int k = 0;
@@ -79,11 +81,11 @@ public:
 			//save("Parareal_states_iteration_" + std::to_string(k) + ".txt", X);
 			auto paratoc = std::chrono::high_resolution_clock::now();
 			PRINT("For iteration",k,": time taken =", std::chrono::duration_cast<std::chrono::milliseconds>(paratoc - paratic).count(),"ms,	max state change = ", diffs.row(k - 1).rightCols(4).maxCoeff(),"	and time steps until and including", converged_until, "have converged");
-			PRINT("Energy conservation first and last step = ", abs(coarse.Energy(X.col(X.cols() - 1)).sum() - Etot0) / Etot0);
+			//PRINT("Energy conservation first and last step = ", abs(coarse.Energy(X.col(X.cols() - 1)).sum() - Etot0) / Etot0);
 
 		}
 		PRINT("Parareal took", k, "iterations.");
-		save("Parareal_max_state_changes.txt", diffs.topRows(k));
+		save("parareal_iteration_information.txt", diffs.topRows(k));
 		return k;
 	}
 };

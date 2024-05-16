@@ -55,40 +55,22 @@ int subcycling_parameter_test(int argc, char* argv[]) {
     Array3Xd vp(3, Np), E0(3, Nx), Bc(3, Nx);
 
     TestProblems::SetTransverse(xp, vp, E0, Bc, qp, Nx, Np, L);
-
-    int nthreads, tid;
-    #pragma omp parallel private(nthreads, tid) num_threads(num_thr)
-    {
-        /* Obtain thread number */
-        tid = omp_get_thread_num();
-        /* Only master thread does this */
-        if (tid == 0)
-        {
-            nthreads = omp_get_num_threads();
-            printf("Number of threads = %d\n", nthreads);
-        }
-
-    }  /* All threads join master thread and disband */
     int NT = round(T / coarse_dt);
-    auto coarse_solver = ECSIM<1, 3>(L, Np, Nx, 1, coarse_dt, qp, LinSolvers::SolverType::LU);
+    auto coarse_solver = ECSIM<1, 3>(L, Np, Nx, 1, coarse_dt, qp, LinSolvers::SolverType::GMRES);
     auto fine_solver = ECSIM<1, 3>(L, Np, Nx, 1, fine_dt, qp, LinSolvers::SolverType::GMRES);
     auto para_solver = Parareal(fine_solver, coarse_solver, thresh, NT + 1, num_thr);
     VectorXd ts = VectorXd::LinSpaced(NT + 1, 0, T);
 
     VectorXd Xn(4 * Np + 6 * Nx);
     Xn << xp, Map<const ArrayXd>(vp.data(), vp.size()), Map<const ArrayXd>(E0.data(), E0.size()), Map<const ArrayXd>(Bc.data(), Bc.size());
-    auto Eold = fine_solver.Energy(Xn);
 
-    // Actually perform the simulations
     // SERIAL
     MatrixXd Xn_fine(4 * Np + 6 * Nx, NT + 1);
     Xn_fine.col(0) << Xn;
-    VectorXd Ediff_fine(NT);
 
     auto tic = std::chrono::high_resolution_clock::now();
     for (int i = 0; i < NT; i++) {
         fine_solver.Step(Xn_fine.col(i), ts(i), ts(i + 1), Xn_fine.col(i + 1));
-        Ediff_fine(i) = abs((fine_solver.Energy(Xn_fine.col(i + 1)) - Eold).sum()) / abs(Eold.sum());
     }
     auto toc = std::chrono::high_resolution_clock::now();
     double fine_time = std::chrono::duration_cast<std::chrono::milliseconds>(toc - tic).count();
@@ -96,48 +78,30 @@ int subcycling_parameter_test(int argc, char* argv[]) {
 
     MatrixXd Xn_para(4 * Np + 6 * Nx, NT + 1);
     Xn_para.col(0) <<  Xn;
-    VectorXd Ediff_para(NT);
 
     int refinements = 10;
-    MatrixXd speedup(refinements, 11);
-    // Get a reference solution
-    MatrixXd Yn_ref(Xn.rows(),1);
-    double ref_fine_dt = fine_dt / 50;
-    fine_solver.Set_dt(ref_fine_dt);
-    fine_solver.Step(Xn_para.col(0), 0, T, Yn_ref.col(0));
-    fine_solver.Set_dt(fine_dt);
+    MatrixXd info(refinements, 9);
     for (int j = 0; j < refinements; j++) {
         int nsub = j + 1;
         PRINT("subcycles ", nsub);
         coarse_solver.Set_Nsub(nsub);
-
         tic = std::chrono::high_resolution_clock::now();
         int k = para_solver.Solve(Xn_para, ts);
         toc = std::chrono::high_resolution_clock::now();
         double para_time = std::chrono::duration_cast<std::chrono::milliseconds>(toc - tic).count();
         PRINT("PARAREAL TIME =", para_time, "ms");
-        for (int i = 0; i < NT; i++) {
-            Ediff_para(i) = abs((fine_solver.Energy(Xn_para.col(i + 1)) - Eold).sum()) / abs(Eold.sum());
-        }
-        //PRINT("Finished serial in", std::chrono::duration_cast<std::chrono::milliseconds>(toc - tic).count(), "ms");
-        //PRINT("Finished parareal in", std::chrono::duration_cast<std::chrono::milliseconds>(toc - tic).count(), "ms");
-        speedup(j, 0) = nsub;
-        speedup(j, 1) = fine_time;
-        speedup(j, 2) = para_time;
-        speedup(j, 3) = k;
-        speedup(j, 4) = fine_solver.Error(Xn_fine, Xn_para).reshaped(4 * Xn_fine.cols(), 1).maxCoeff();
-        speedup(j, 5) = Ediff_para.maxCoeff();
-        speedup(j, 6) = fine_time / para_time;
-        auto err = fine_solver.Error(Yn_ref, Xn_para.col(NT));
-        speedup(j - 1, 7) = err(0);
-        speedup(j - 1, 8) = err(1);
-        speedup(j - 1, 9) = err(2);
-        speedup(j - 1, 10) = err(3);
-        PRINT("Speedup = ", speedup(j, 6));
-        PRINT("Max relative 2-norm difference between parareal and serial =", speedup(j, 4));
-        PRINT("Relative 2-norm difference between parareal and reference =", fine_solver.Error(Yn_ref, Xn_para.col(NT)));
-        PRINT("Max relative energy difference against initial state for parareal =", speedup(j, 5));
-        save("Parareal_speedup_subcycling.txt", speedup);
+        info(j, 0) = nsub;
+        info(j, 1) = fine_time;
+        info(j, 2) = para_time;
+        info(j, 3) = k;
+        info(j, 4) = fine_solver.Error(Xn_fine, Xn_para).maxCoeff();
+        info(j, 5) = fine_time / para_time;
+        info(j, 6) = coarse_dt;
+        info(j, 7) = fine_dt;
+        info(j, 8) = Nx;
+        PRINT("Speedup = ", info(j, 5));
+        PRINT("Max relative 2-norm difference between parareal and serial =", info(j, 4));
+        save("subcycling_test.txt", info);
     }
     return 0;
 }
