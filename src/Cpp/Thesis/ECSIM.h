@@ -21,7 +21,7 @@ namespace TestProblems {
         E0 = Array3Xd::Ones(3, Nx)/10;//initialization of electric field in each of the grid cells
         //E0 = Array3Xd::Zero(3, Nx);
         Bc = Array3Xd::Zero(3, Nx);
-        Bc.row(0) = ArrayXd::Ones(Nx) / 10;
+        //Bc.row(0) = ArrayXd::Ones(Nx) / 10;
 
         ArrayXd pm = 1 + ArrayXd::LinSpaced(Np, 0, Np - 1);
         pm = 1 - 2 * mod(pm, 2).cast<double>();
