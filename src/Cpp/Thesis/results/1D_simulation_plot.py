@@ -36,7 +36,7 @@ dt = 0.125
 ts = np.linspace(0, NT*dt, NT+1)
 
 fig = plt.figure(figsize = (14, 8), dpi = 300)
-plt.subplot(1, 3, 1)
+plt.subplot(3, 1, 1)
 
 # initial conditions
 time_step = 0
@@ -62,7 +62,7 @@ plt.tick_params(axis = 'x', which = 'major', labelsize = 18, length = 8)
 plt.tick_params(axis = 'y', which = 'major', labelsize = 20, length = 8)
 
 ### ----------------------------------- ###
-plt.subplot(1, 3, 2)
+plt.subplot(3, 1, 2)
 
 # initial conditions
 time_step = 1
@@ -89,7 +89,7 @@ plt.tick_params(axis = 'x', which = 'major', labelsize = 18, length = 8)
 plt.tick_params(axis = 'y', which = 'major', labelsize = 20, length = 8)
 ### ----------------------------------- ###
 
-plt.subplot(1, 3, 3)
+plt.subplot(3, 1, 3)
 
 plt.semilogy(ts[:],abs(energy[:]-energy[0])/energy[0], "b-")
 
@@ -107,6 +107,6 @@ plt.xlim(-0.2, NT*dt + 0.3)
 ### ----------------------------------- ###
 
 fig.tight_layout(rect = [0.0, 0.0, 1.0, 1.0])
-plt.savefig("./Sim_plots_1D.eps")
+plt.savefig("./Sim_plots_1D.png")
 
 ### ========================================================================== ####
