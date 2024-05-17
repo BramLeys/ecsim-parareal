@@ -72,7 +72,7 @@ int time_step_parameter_test(int argc, char* argv[]) {
     MatrixXd Xn_para(Xn.rows(), NT + 1);
     Xn_para.col(0) << Xn;
 
-    MatrixXd info(refinements,6);
+    MatrixXd info(refinements,8);
 
     for (int j = 0; j < refinements; j++) {
         int refinement_number = pow(2,j);
