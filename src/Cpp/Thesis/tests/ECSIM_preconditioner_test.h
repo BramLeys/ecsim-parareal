@@ -54,9 +54,9 @@ int ECSIM_precond_test(int argc, char* argv[]) {
 
     TestProblems::SetTransverse(xp, vp, E0, Bc, qp, Nx, Np, L);
     int NT = round(T / dt);
-    auto id_solver = ECSIM<1, 3, IdentityPreconditioner>(L, Np, Nx, Nsub, dt, qp, LinSolvers::SolverType::BICGSTAB);
-    auto dia_solver = ECSIM<1, 3, DiagonalPreconditioner<double>>(L, Np, Nx, Nsub, dt, qp, LinSolvers::SolverType::BICGSTAB);
-    auto LU_solver = ECSIM<1, 3, IncompleteLUT<double>>(L, Np, Nx, Nsub, dt, qp, LinSolvers::SolverType::BICGSTAB);
+    auto id_solver = ECSIM<1, 3, IdentityPreconditioner>(L, Np, Nx, Nsub, dt, qp, LinSolvers::SolverType::GMRES);
+    auto dia_solver = ECSIM<1, 3, DiagonalPreconditioner<double>>(L, Np, Nx, Nsub, dt, qp, LinSolvers::SolverType::GMRES);
+    auto LU_solver = ECSIM<1, 3, IncompleteLUT<double>>(L, Np, Nx, Nsub, dt, qp, LinSolvers::SolverType::GMRES);
 
     VectorXd Xn(4 * Np + 6 * Nx);
     Xn.col(0) << xp, Map<const ArrayXd>(vp.data(), vp.size()), Map<const ArrayXd>(E0.data(), E0.size()), Map<const ArrayXd>(Bc.data(), Bc.size());

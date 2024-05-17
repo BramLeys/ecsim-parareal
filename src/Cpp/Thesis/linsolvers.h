@@ -51,7 +51,7 @@ namespace LinSolvers {
         using SparseSolverBase::SparseSolverBase;
         inline Eigen::VectorXd solve(const Eigen::SparseMatrix<double>& A, const Eigen::VectorXd& b, const Eigen::VectorXd& initialGuess) override {
             Eigen::GMRES<Eigen::SparseMatrix<double>, P> solver;
-            solver.setMaxIterations(200);
+            solver.setMaxIterations(400);
             solver.set_restart(50);
             solver.setTolerance(this->thresh);
 
