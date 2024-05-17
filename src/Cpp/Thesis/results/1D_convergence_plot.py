@@ -26,16 +26,15 @@ plt.loglog(ts, err_x, marker='o', color='blue', markersize = 10, label="Position
 plt.loglog(ts, err_v, marker='x', color='red', markersize = 10, label="Velocity")
 plt.loglog(ts, err_E, marker='+', color='green', markersize = 10, label="Electric field")
 plt.loglog(ts, second_order, linestyle="dashed", color="black",markersize = 10, label =r"$\mathcal{O}(\Delta t^2)$")
-plt.ylabel("Error", fontsize = 16, color = "blue")
+plt.ylabel("Error", fontsize = 20)
 plt.tick_params(axis = 'both', which = 'major', labelsize = 14)
-plt.yticks(color = "blue")
-plt.xlabel(r"Timestep size", fontsize = 16)
+plt.xlabel(r"Timestep size", fontsize = 20)
 # fig.legend(bbox_to_anchor = (0.95, 0.999), ncol = 3, prop = {'size': 18})
-plt.legend()
-plt.title(r"Convergence of CASE III using ECSIM")
+plt.legend(fontsize=20,loc='center left', bbox_to_anchor=(1, 0.5))
+plt.title(r"Convergence of CASE III using ECSIM", fontsize=25)
 
 # saving
 
 fig.tight_layout(rect = [0.0, 0.0, 1.0, 1.0])
-plt.savefig("./ECSIM1DConvergence.png")
+plt.savefig("./ECSIM1DConvergence.eps")
 

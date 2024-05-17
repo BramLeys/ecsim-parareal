@@ -1,11 +1,3 @@
-"""
-Created on Fri Apr 26 13:55:25 2024
-
-@author: PJD
-
-Adjusted by Bram Leys
-"""
-
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.ticker import LogFormatterSciNotation
@@ -32,7 +24,7 @@ print(B.shape)
 print(E.shape)
 
 NT = energy.shape[0]-1
-dt = 0.125
+dt = 0.5
 ts = np.linspace(0, NT*dt, NT+1)
 
 fig = plt.figure(figsize = (14, 8), dpi = 300)
@@ -52,9 +44,9 @@ plt.scatter(x_t[negative], v_t[negative, 0], c = "red", marker = ".")
 plt.scatter(x_t[positive], v_t[positive, 0], c = "blue", marker = ".")
 
 plt.xlim(0, 2*np.pi)
-plt.yticks([-0.10, -0.05, 0.00, 0.05, 0.10])
+# plt.yticks([-0.10, -0.05, 0.00, 0.05, 0.10])
 
-plt.title("Phase Space", fontsize = 24)
+plt.title("Initial condition", fontsize = 24)
 plt.xlabel("X (m)", fontsize = 22)
 plt.ylabel("Velocity along X\n(m/s)", fontsize = 22)
 
@@ -79,9 +71,9 @@ plt.scatter(x_t[positive], v_t[positive, 0], c = "blue", marker = ".")
 plt.scatter(x_t[negative], v_t[negative, 0], c = "red", marker = ".")
 
 plt.xlim(0, 2*np.pi)
-plt.yticks([-0.10, -0.05, 0.00, 0.05, 0.10])
+# plt.yticks([-0.10, -0.05, 0.00, 0.05, 0.10])
 
-plt.title("Phase Space", fontsize = 24)
+plt.title(f"Phase space at t = {dt*NT}s", fontsize = 24)
 plt.xlabel("X (m)", fontsize = 22)
 plt.ylabel("Velocity along X\n(m/s) ", fontsize = 22)
 
@@ -107,6 +99,6 @@ plt.xlim(-0.2, NT*dt + 0.3)
 ### ----------------------------------- ###
 
 fig.tight_layout(rect = [0.0, 0.0, 1.0, 1.0])
-plt.savefig("./Sim_plots_3D.png")
+plt.savefig("./Sim_plots_3D.eps")
 
 ### ========================================================================== ####

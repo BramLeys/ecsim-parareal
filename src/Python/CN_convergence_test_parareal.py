@@ -41,8 +41,8 @@ NT = (int)(args.T / args.coarse_dt)
 ts = np.linspace(0, args.T,NT + 1)
 refinement = 5
 
-F = Solvers.CrankNicholson(B, args.coarse_dt, args.thresh/100)
-G = Solvers.CrankNicholson(B, args.coarse_dt, args.thresh/100)
+F = Solvers.CrankNicholson(B, args.coarse_dt, args.thresh*10)
+G = Solvers.CrankNicholson(B, args.coarse_dt, args.thresh*10)
 ref_solver = Solvers.CrankNicholson(B, args.coarse_dt/pow(2,refinement+3), 1e-15)
 
 parareal_solver = Solvers.PararealSolver(50, F, G, it_threshold=args.thresh)
@@ -62,6 +62,7 @@ for i in range(refinement):
 	errors[i, 0] = fine_dt
 	errors[i,1] = np.linalg.norm(X_para[-1,NT,:] - Yn_ref)/np.linalg.norm(Yn_ref)
 	errors[i,2] = np.linalg.norm(Yn_ser - Yn_ref)/np.linalg.norm(Yn_ref)
+	print("error compared to serial sol", np.linalg.norm(Yn_ser - X_para[-1,NT,:])/np.linalg.norm(Yn_ser))
 	if (i > 0):
 		convergence[i, 0] = fine_dt
 		convergence[i,-2:] = errors[i,-2:] / errors[i-1,-2:]

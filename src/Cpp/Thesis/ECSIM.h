@@ -421,8 +421,8 @@ public:
 
         Eigen::SparseMatrix<double> Maxwell(5 * this->Nx, 5 * this->Nx);
 
-        SparseLU<SparseMatrix<double>> solver;
-        //GMRES<SparseMatrix<double>, IdentityPreconditioner> solver;
+        //SparseLU<SparseMatrix<double>> solver;
+        GMRES<SparseMatrix<double>, IncompleteLUT<double>> solver;
 
         std::vector<Triplet<double>> tripletListMaxwell;
 

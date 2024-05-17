@@ -20,14 +20,13 @@ fig = plt.figure(figsize = (12, 5), dpi = 300)
 
 plt.semilogy(its, err_est, marker='o', color='blue', markersize = 10, label=r"Estimated error")
 if(np.any(err_act > 0)):
-    plt.semilogy(its, err_act, marker='^', color='red', markersize = 10, label=r"Energy error")
-plt.ylabel("Error", fontsize = 16, color = "blue")
-plt.tick_params(axis = 'both', which = 'major', labelsize = 14)
-plt.yticks(color = "blue")
+    plt.semilogy(its, err_act, marker='^', color='red', markersize = 14, label=r"Energy error")
+plt.ylabel("Error", fontsize = 20)
+plt.tick_params(axis = 'both', which = 'major', labelsize = 16, )
 plt.xticks(range(1,its.shape[0]+1))
-plt.xlabel("Iteration", fontsize = 16)
-plt.legend()
-plt.title(r"Estimated and actual errors incurred during parareal using ECSIM")
+plt.xlabel("Iteration", fontsize = 20)
+plt.legend( fontsize = 20)
+plt.title(r"Estimated and actual errors incurred during parareal using ECSIM", fontsize = 20)
 
 # saving
 

@@ -52,9 +52,9 @@ plt.scatter(x_t, v_t, c = "blue", marker = ".")
 # plt.scatter(x_t[negative], v_t[negative, 0], c = "red", marker = ".")
 
 plt.xlim(0, 2*np.pi)
-plt.yticks([-0.10, -0.05, 0.00, 0.05, 0.10])
+# plt.yticks([-0.10, -0.05, 0.00, 0.05, 0.10])
 
-plt.title("Phase Space", fontsize = 24)
+plt.title("Initial condition", fontsize = 24)
 plt.xlabel("X (m)", fontsize = 22)
 plt.ylabel("Velocity \n(m/s)", fontsize = 22)
 
@@ -79,9 +79,9 @@ plt.scatter(x_t, v_t, c = "blue", marker = ".")
 # plt.scatter(x_t[negative], v_t[negative, 0], c = "red", marker = ".")
 
 plt.xlim(0, 2*np.pi)
-plt.yticks([-0.10, -0.05, 0.00, 0.05, 0.10])
+# plt.yticks([-0.10, -0.05, 0.00, 0.05, 0.10])
 
-plt.title("Phase Space", fontsize = 24)
+plt.title(f"Phase Space at t = {dt*NT}s", fontsize = 24)
 plt.xlabel("X (m)", fontsize = 22)
 plt.ylabel("Velocity \n(m/s) ", fontsize = 22)
 
@@ -98,7 +98,7 @@ plt.xlabel("Simulation time (s)", fontsize = 22)
 plt.ylabel("Error in energy", fontsize = 22)
 
 plt.tick_params(axis = 'x', which = 'major', labelsize = 20, length = 8)
-plt.tick_params(axis = 'y', which = 'minor', labelsize = 10, length = 4)
+plt.tick_params(axis = 'y', which = 'minor', labelsize = 20, length = 4)
 plt.tick_params(axis = 'y', which = 'major', labelsize = 20, length = 8)
 
 plt.xlim(-0.2, NT*dt + 0.3)
@@ -107,6 +107,6 @@ plt.xlim(-0.2, NT*dt + 0.3)
 ### ----------------------------------- ###
 
 fig.tight_layout(rect = [0.0, 0.0, 1.0, 1.0])
-plt.savefig("./Sim_plots_1D.png")
+plt.savefig("./Sim_plots_1D.eps")
 
 ### ========================================================================== ####
