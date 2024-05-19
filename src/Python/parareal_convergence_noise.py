@@ -13,7 +13,7 @@ def parse_arguments():
                         help='Set the value of fine solver dt (default: 1e-4)')
     parser.add_argument('-tr', '--thresh', type=float, default=1e-8,
                         help='Set the value of threshold (default: 1e-8)')
-    parser.add_argument('-N', '--N', type=int, default=10,
+    parser.add_argument('-N', '--N', type=int, default=100,
                         help='Set the value of number of gridpoints (default: 10)')
     parser.add_argument('-t', '--T', type=float, default=0,
                         help='Set the time length, 0 becomes 12*coarse dt (default: 0)')
@@ -42,29 +42,30 @@ B = sp.sparse.csr_array(B)
 NT = (int)(args.T / args.coarse_dt)
 ts = np.linspace(0, args.T,NT + 1)
 
-F = Solvers.CrankNicholson(B, args.fine_dt, args.thresh/100)
-G = Solvers.CrankNicholson(B, args.coarse_dt, args.thresh/100)
-ref_solver = Solvers.CrankNicholson(B, args.fine_dt/pow(2,3), 1e-15)
+solver_tol = 1e-12
+F = Solvers.CrankNicholson(B, args.fine_dt, solver_tol)
+G = Solvers.CrankNicholson(B, args.coarse_dt, solver_tol)
+# ref_solver = Solvers.CrankNicholson(B, args.fine_dt/pow(2,3), 1e-15)
 
 parareal_solver = Solvers.PararealSolver(50, F, G, it_threshold=args.thresh)
 
 Xn = np.sin(2*np.linspace(0,L,args.N,endpoint=False)) + 5
 # Xn = np.random.rand(args.N)
-Yn_ref = ref_solver.Step(Xn, 0, args.T,True)
+# Yn_ref = ref_solver.Step(Xn, 0, args.T,True)
 X_para = parareal_solver.Solve(Xn, ts)
 Y_ser = F.Step(Xn,0,args.T,True)
 
-print(Y_ser.shape)
+# print(Y_ser.shape)
 refinement = round(args.coarse_dt/args.fine_dt)
 ser_steps = list(range(0,Y_ser.shape[0],refinement))
-ref_steps = list(range(0,Yn_ref.shape[0],refinement*8))
-print(ser_steps)
+# ref_steps = list(range(0,Yn_ref.shape[0],refinement*8))
+# print(ser_steps)
 
 k = X_para.shape[0]
-max_errors = np.empty(k)
-for i in range(k):
-    max_errors[i] = np.max(np.linalg.norm((Yn_ref[ref_steps,:] - X_para[i,:,:]),axis=-1))
-print(max_errors)
-print(f"max fine error: {np.max(np.linalg.norm((Yn_ref[ref_steps,:] - Y_ser[ser_steps,:]),axis=-1))}")
-print(f"error compared to serial: {np.linalg.norm((X_para[-1,:,:] - Y_ser[ser_steps,:]),axis=-1)}")
+# max_errors = np.empty(k)
+# for i in range(k):
+#     max_errors[i] = np.max(np.linalg.norm((Yn_ref[ref_steps,:] - X_para[i,:,:]),axis=-1))
+# print(max_errors)
+# print(f"max fine error: {np.max(np.linalg.norm((Yn_ref[ref_steps,:] - Y_ser[ser_steps,:]),axis=-1))}")
+print(f"max error compared to serial: {np.max(np.linalg.norm((X_para[-1,:,:] - Y_ser[ser_steps,:]),axis=-1))}")
 

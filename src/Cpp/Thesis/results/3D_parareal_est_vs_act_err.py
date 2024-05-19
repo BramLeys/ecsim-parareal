@@ -7,7 +7,7 @@ rc('text', usetex=True)
 
 
 # Data loading and selection
-filename = "./parareal_iteration_information.txt"
+filename = "../../../../paper/Results/parareal_iteration_information.txt"
 data = np.loadtxt(filename)
 
 its = data[:,0]
@@ -16,21 +16,21 @@ err_act = data[:,2]
 
 # Plots
 
-fig = plt.figure(figsize = (12, 5), dpi = 300)
+fig = plt.figure(figsize = (8, 6), dpi = 300)
 
-plt.semilogy(its, err_est, marker='o', color='blue', markersize = 10, label=r"Estimated error")
+plt.semilogy(its, err_est, marker='o', color='blue', markersize = 10, label=r"Parareal error")
 if(np.any(err_act > 0)):
-    plt.semilogy(its, err_act, marker='^', color='red', markersize = 10, label=r"Actual error")
-plt.ylabel("Error", fontsize = 16, color = "blue")
-plt.tick_params(axis = 'both', which = 'major', labelsize = 14)
-plt.yticks(color = "blue")
+    plt.semilogy(its, err_act, marker='^', color='red', markersize = 10, label=r"Error w.r.t. serial solution")
+plt.ylabel("Error", fontsize = 20)
+plt.tick_params(axis = 'both', which = 'major', labelsize = 20)
 plt.xticks(range(1,its.shape[0]+1))
-plt.xlabel("Iteration", fontsize = 16)
-plt.legend()
-plt.title(r"Estimated and actual errors incurred during parareal using ECSIM")
+plt.xlabel("Iteration", fontsize = 20)
+plt.legend( fontsize = 20)
+plt.title(r"State variable error during parareal", fontsize = 23)
 
 # saving
 
 fig.tight_layout(rect = [0.0, 0.0, 1.0, 1.0])
-plt.savefig("./est_vs_act_err_parareal_check.png")
+plt.savefig("./figures/eps/est_vs_act_err_parareal_check.eps")
+plt.savefig("./figures/png/est_vs_act_err_parareal_check.png")
 

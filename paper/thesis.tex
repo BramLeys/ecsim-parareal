@@ -3,7 +3,7 @@
   inputenc=utf8,
   title={Parallel in Time methods: supercomputing algorithms and efficient implementation of particle methods},
   author={Bram Leys},
-  promotor={Prof.\,Dr. Giovanni Lapenta},
+  promotor={Prof.\ Dr. \ G. Lapenta},
   assessor={Prof.\ Dr.\ Ir.\ R. Sepulchre\and Prof.\ Dr.\ Ir.\,S. Vandewalle },
   assistant={Dr.\ P.J. Deka}}
 % Remove the "%" on the next line for generating the cover page
@@ -16,9 +16,13 @@
 \setup{font=lm}
 
 % If you want to include other LaTeX packages, do it here. 
+\usepackage{graphicx}
 \usepackage[thinc]{esdiff}
 \usepackage{amsmath}
 \usepackage{amsfonts}
+\usepackage{float}
+\usepackage{subfig}
+% \usepackage[round, authoryear, sort]{natbib}
 
 % Finally the hyperref package is used for pdf files.
 % This can be commented out for printed versions.
@@ -37,8 +41,7 @@
 
 \begin{preface}
   I would like to thank everybody who helped me the last year,
-  especially my promoter and assistant. I would also like to thank the
-  jury for reading the text. 
+  especially my promoter and daily supervisor. I would also like to thank the jury for reading the text. 
 \end{preface}
 
 \tableofcontents*
@@ -62,7 +65,7 @@
 \begin{flushleft}
   \renewcommand{\arraystretch}{1.1}
   \begin{tabularx}{\textwidth}{@{}p{12mm}X@{}}
-  	PIC & Particle-In-Cell\\
+  	PIC & Particle-in-Cell\\
     ECSIM   & Energy Conserving Semi-Implicit Method \cite{lapenta_exactly_2017}\\
     IVP & Initial Value Problem\\
     ODE & Ordinary Differential Equation\\
@@ -90,26 +93,32 @@
     $c$ & The speed of light\\
     $\varepsilon_0$ & Permittivity of vacuum\\
     $\mu_0$ & Permeability of vacuum\\
+    $\Delta t$ & Time step size\\
+    $\Delta t_G$ & Time step size of coarse solver\\
+    $\Delta t_F$ & Time step size of fine solver\\
     
   \end{tabularx}
 \end{flushleft}
 
+\newcommand{\pjd}[1]{{{\color{blue} #1}}}
+\newcommand{\bram}[1]{{{\color{red} #1}}}
+
 % Now comes the main text
 \mainmatter
 
-\include{intro}
-\include{chap-1}
-\include{chap-2}
-% ... and so on until
-\include{chap-n}
+\include{introduction}
+\include{chap-pic}
+\include{chap-pint}
+\include{chap-para-ecsim}
 \include{conclusion}
 
 % If you have appendices:
 \appendixpage*          % if wanted
 \appendix
-\include{app-A}
+\include{app-spatial}
 % ... and so on until
-\include{app-n}
+\include{app-alpha}
+\include{app-grid}
 
 \backmatter
 % The bibliography comes after the appendices.

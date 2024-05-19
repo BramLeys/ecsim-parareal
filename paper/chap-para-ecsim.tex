@@ -1,0 +1,342 @@
+\chapter{Parareal Solvers for Particle-in-Cell Simulations}
+\label{cha: methods and results}
+
+%%% ============================================================================================ %%%
+
+This chapter investigates the performance of the parareal method applied to particle-in-cell (PIC) simulations using a simplified model of the energy conserving semi-implicit method (ECSIM). The simplified model only takes one dimension into account for the position. However, this should still enable the testing of interesting properties while reducing computational complexity.
+
+Firstly, the efficacy of parareal is tested with a well-known implicit method, the Crank--Nicolson (CN) integrator, on the one-dimensional diffusion equation. We show that Crank--Nicolson indeed achieves second-order accurate solutions, with and without parareal. To test the validity of the simplified version of the ECSIM code, developed within the context of this thesis, we perform unit tests and compare our simulation results with those presented in \cite{lapenta_exactly_2017,lapenta_advances_2023}. 
+
+The performance of the ECSIM solver with parareal is the main point of interest for this project.
+ The efficacy of the parareal algorithm applied to a method is quantified using the following metrics:
+ \begin{itemize}
+    
+    \item \textit{Accuracy}, calculated as the error compared to the serial case, i.e., ECSIM without parareal
+    
+    \item \textit{Speedup}, defined as the ratio of time taken by the serial solve to that of the parareal solve $\left(\frac{T_\mathrm{serial}}{T_\mathrm{parareal}}\right)$.
+    
+    \item \textit{Parallel efficiency}, defined as the ratio of the speedup obtained to the number of cores used $\left(\frac{\text{speedup}}{\text{number of processors}}\right)$
+    
+    \item \textit{Computational runtime}, the simulation time elapsed
+ 
+ \end{itemize}
+
+ We further perform a parameter study to investigate the behaviour of the parareal algorithm for PIC simulations. The following cases are considered: 
+ \begin{itemize}
+ 
+    \item Temporal coarsening
+    
+    \item Scaling tests on shared-memory architecture
+    
+    \item Different linear solvers (for ECSIM)
+ 
+ \end{itemize}
+A spatial coarsening test was also considered (Appendix \ref{app: spatial coarsening}). However, elementary tests revealed that a comprehensive analysis with various high-order polynomial interpolation methods is required, which is beyond this project's scope. 
+We analyse these aspects of the parareal algorithm using the following set of test cases:
+
+\begin{itemize}
+
+    \item CASE I: Diffusion equation
+
+    \item CASE II: \bram{
+    maybe this should really just be removed
+    }
+
+    \item CASE III: Two-stream instability: an electrostatic toy problem
+
+    \item CASE IV: Weibel instability: an electromagnetic toy problem
+    
+\end{itemize}
+Note that parareal solvers are known to exhibit poor conservation of energy \cite{}. As such, we do not concern ourselves with the \textit{exact} energy-conserving property of ECSIM.
+
+% A convergence test will prove that the Parareal algorithm approximates the fine solution up to a desired tolerance. Another test will investigate the different possible implementations of the tolerance. The tolerance should define at which point a solution is converged. This can be implemented in two ways: one can check whether the state change across all time steps is below a certain tolerance, or one can look at each timestep separately. The second implementation allows for fewer calculations since the number of timesteps that still need to be calculated at the later Parareal iterations should be smaller. This method might also inhibit the algorithm's convergence, leading to longer simulation times.
+
+
+% \pjd{Since you don't get exact energy conservation, phrases like "Any implementation must thus have this property." or "These test cases must show that energy is conserved" would destroy the credibility of your work. The description of the test cases can go in the respective subsections where you perform the tests. Other than that, I suggest that you remove this para.}
+
+% As stated in \ref{subsec: plasma intro ECSIM}, ECSIM is a particle-in-cell method developed in \cite{lapenta_exactly_2017} to be a direct PIC solver which is fully energy conserving. Any implementation must thus have this property. The energy conservation is calculated as a relative error of the energy at a timepoint $t$, $E(t)$, and the initial energy, $E(0)$: $\frac{|E(t) - E(0)|}{E(0)}$. 
+% Two chaotic test problems will be used to assess the correctness of the implementation: an electrostatic two-stream instability and an electromagnetic Weibel instability. An initial test is also performed by manually setting the fields to zero, and the particle mover will perfectly conserve energy based on the initial momentum; this experiment will be referred to as CASE 2. This test can, unfortunately, only prove whether a part of the particle mover is correct. The two-stream instability, hereafter referred to as CASE 3, is one-dimensional in both position as velocity. This instability can occur when a uniform plasma has two equal density Maxwellian beams of speed $\pm \textbf{v}_0$. CASE 3 is the Weibel instability, one-dimensional in space but three-dimensional in velocity. The instability arises in plasmas with anisotropic velocities, meaning the magnitudes of the different axes differ significantly. These test cases must show that energy is conserved throughout the simulation and that the convergence rates for the position and velocity of the particles and the fields are second order. Finally, the phase spaces of the simulations should also reveal structures that are expected for the given instabilities.
+
+%%% ============================================================================================ %%%
+
+\section{Implementation Details}
+
+The developed ECSIM code only depends on the standard \texttt{C++} libraries and the publicly available \texttt{Eigen} library \cite{gael_guennebaud_and_benoit_jacob_and_others_eigen_2010}. The code is parallelised using \texttt{OpenMP}, which supports shared-memory parallelisation and GPU-offloading (from version 4.0 onward). While GPU-offloading is beyond the scope of this work, one could easily adapt this code by replacing the \texttt{Eigen} matrices with a GPU-supported linear algebra library. The code developed within the framework of this project is open-source and can be obtained from \url{https://github.com/BramLeys/ecsim-parareal/tree/main}. \bram{rewrite:}We do not use pipelining, and consequently, the idle cores in the coarse solver can speed up the coarse solver (see Sec. \ref{sub: subcycling} for details).
+\texttt{OpenMP} is designed for use on systems with a shared-memory implementation. To avoid excessive data copying between nodes, tests will thus be performed on one node.\pjd{
+not clear, rephrase
+}
+To use multiple nodes, one would have to use \textbf{MPI} to efficiently make use of the available cores.
+The tests were performed on two systems: an MSI GS65 Stealth 9SF with an Intel i7-9750H CPU at a base clock speed of 2.60GHz and 32 GB of RAM and the Tier-2 wICE system at the Flemish Supercomputing Center (VSC). The experiments were run on the Sapphire Rapids nodes, each with 2 Intel Xeon Platinum 8468 CPUs, with a total of 96 cores running at 2.10GHz base clock. Each node has 256 GiB of RAM. The preliminary tests were performed on the MSI GS65, while experiments where timing is essential, such as the speedup and performance tests, were performed on the VSC. 
+
+%%% ============================================================================================ %%%
+ 
+\section{Convergence Tests}
+\label{sec: convergence}
+We start our analysis of the parareal algorithm using the well-known second-order implicit CN integrator, on the one-dimensional diffusion equation:
+\begin{equation}
+    \frac{\partial u(x,t)}{\partial t} = \frac{\partial^2 u(x, t)}{\partial x}.
+\end{equation}
+Here, $u$ is the state vector at the position $x$ and time $t$. The spatial domain is discretised into $N_x$ grid cells. The spatial derivative is discretised using the standard second-order centred finite difference scheme, and periodic boundaries are considered on the spatial domain, $x \in [0,2\pi[$. 
+Consider a grid of size $N_x = 100$ simulated over $1$ second. As a first test, the initial value of each grid point is set to a random value \pjd{terrible idea} in [-1, 1]. The results can be seen in Figure \ref{fig: CN-convergence-random}. The figure shows the system's serial and parareal simulation errors with decreasing timestep size compared to a reference solution. The parareal results were calculated by reducing the time step size of the fine solver while keeping the coarse solver timesteps at the original size ($= 0.125$). The reference solution, $\textbf{u}_{\mathrm{ref}}$, was calculated as a serial solution using a time step $50$ times smaller than the finest timestep used for the convergence analysis. The error is computed as the relative l2 norm of the difference at $t=1$:
+\[\mathrm{error} = \frac{\|\textbf{u}_{\mathrm{ref}} - \textbf{u}\|_2}{\| \textbf{u}_{\mathrm{ref}}\|_2}\]
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=1\linewidth]{figures/eps/CNConvergence.eps}
+    \caption{Convergence of Crank-Nicholson in serial and using Parareal for the diffusion problem using random initial conditions. \pjd{remove green curve. Limit x-axis value to $\sim 5e-4$}}
+    \label{fig: CN-convergence-random}
+\end{figure}
+\newline 
+While the plot shows that the errors have second-order convergence behaviour, some concerns arise when looking at the internal convergence of the Parareal algorithm. The difference in states between parareal iterations increases between successive iterations instead of converging to 0. This is unexpected considering the convergence theorems from \cite{gander_analysis_2007}. The change between iterations goes to 0 only when the number of iterations equals the number of timesteps. This is expected since, at this point, the fine solver will have propagated throughout the entire time domain. However, when this scenario arises, speedup is impossible to achieve. \bram{TRY TO FIND THE REASON WHY: only arises when the convergence is not a nice constant second-order in the beginning, arises quickly when discontinuities are present and not accurate enough -> accuracy issue} 
+The random, discontinuous initial conditions \pjd{remove tests with random IC. Use smooth IC with periodic boundaries.} most likely cause this behaviour. This means the behaviour can be avoided by not considering these conditions. For example, a smooth periodic sine wave as the initial condition ensures a converging trend. Supposing a situation arises in which such a random initial condition is the desired starting point, it can also be solved by decreasing the timestep size of the coarse solver or increasing the grid size. Indicating that the underlying problem is related to the accuracy of the coarse solver. The maximal relative l2 norm of the change in the state across the timesteps for the Parareal iteration is plotted in Figure \ref{fig: CN-parareal-convergence}. This represents the internal convergence of parareal. Five different situations are shown with different initial conditions and simulation parameters. Note that the tolerance for the parareal iteration is set to $10^{-10}$. The smooth versions show much better convergence. The random initial conditions can, however, also converge properly when using the correct discretisation. 
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=1\linewidth]{figures/eps/CN_parareal_Convergence.eps}
+    \caption{Internal convergence of Parareal for the diffusion problem, using different initial conditions and simulation parameters. \pjd{remove black, green, and blue curves, Include another one with N = 1000, dt = $10^{-2}$.}}
+    \label{fig: CN-parareal-convergence}
+\end{figure}
+\newline 
+The error incurred at the $k^\mathrm{th}$  parareal iteration compared to the fine solution is estimated by the relative l2 norm of the difference in states between iterations. This is given as $\frac{\|U^k_n - U^{k-1}_n\|_2}{\|U^k_n\|_2}$ for the $n^\mathrm{th}$ timestep during the $k^\mathrm{th}$ iteration.
+ Classically, the parareal solution is considered converged if the error for each timestep is lower than some given tolerance. Since convergence typically starts from the initial condition and propagates forward in time, the condition has been modified so states can converge individually \cite{d_samaddar_parallelization_2010}. \pjd{This is well-known. You don't have to cite this/}. This allows the algorithm to skip already converged states, thus reducing computations. In the standard parareal formulation, all states must be updated with each iteration. This, however, leads to possibly wasted computations when most states are already converged since differences would not influence the solution much. This method makes perfect sense when a convergence tolerance of the used machine precision is selected since the differences created when recalculating states would be due to rounding errors. However, this reasoning no longer holds when more lenient tolerances are used. It should, therefore, also be investigated whether this modification does not impede the convergence of parareal. Figure \ref{fig: CN-parareal-convergence-tolerance} shows the estimated and actual errors compared to the serial solutions for the two convergence strategies. Only the final iteration is different between the two strategies. However, the error estimate is always an upper bound for the actual error, which is the desired behaviour.
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=1\linewidth]{figures/eps/Tolerance_parareal_check.eps}
+    \caption{Internal convergence of Parareal for the diffusion problem using different strategies for tolerancing.}
+    \label{fig: CN-parareal-convergence-tolerance}
+\end{figure}
+
+CASE II is an exploratory test of the correctness of the ECSIM implementation. The electric and magnetic field values are set to 0, meaning the particles should move only according to their initial momentum. Due to this, the kinetic energy is the only non-zero term when calculating the total energy. Thus, energy is also conserved if the velocity of each particle is constant in time.
+
+CASE II only tests whether the particle mover works (in the absence of fields). It is thus very limited in its ability to prove correctness. Let us now consider test CASE III, which includes the effect of electric fields. The magnetic field can already be present in this one-dimensional setup; however, it should not perform any work or interact with the particles. This is due to the Lorentz force, which is used to calculate the acceleration of the particles: \[\textbf{F} = q\left(\textbf{E} + \textbf{v} \times \textbf{B}\right)\]
+ Since the cross-product of two vectors aligned along the same axis is always equal to $\textbf{0}$, this proves that the magnetic field does not influence the particles. Using the same reasoning on the curl equations in Maxwell's equations, we find that the magnetic field is constant, and the electric field dynamics are only influenced by the current. 
+ Figure \ref{fig: 1D-1V-sim} shows the velocity distribution of the particles in 2D phase-space for both the initial condition (left) and the state after $15$\,seconds (centre). The \textit{exact} energy conservation is also shown as a function of time for the two-stream instability. Here, the time step size is 0.125, and 10000 particles are considered on the spatial domain $x \in [0,2\pi[$, discretised using 5000 grid points.
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=1\linewidth]{figures/eps/Sim_plots_1D.eps}
+    \caption{Phase space and energy conservation of two-stream instability. \pjd{What is k? If you don't mention it, remove it.}}
+    \label{fig: 1D-1V-sim}
+\end{figure}
+Figure \ref{fig: 1D-1V-convergence} shows the method's convergence for each state variable (position, velocity and electric field). The errors incurred by the method seem to mostly follow first-order accuracy. This is a discrepancy compared to the theoretical second-order. As stated in \cite{lapenta_exactly_2017}, this can be due to the number and shape of the particles or the initial conditions. \color{red} This seems very strange. Still, I get the same results when using the code from Giovanni \color{black}
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=1\linewidth]{figures/eps/ECSIM1DConvergence.eps}
+    \caption{Convergence of ECSIM on the two-stream instability.}
+    \label{fig: 1D-1V-convergence}
+\end{figure}
+
+For a test case with both magnetic and electric influence, we turn to CASE IV. While it is still 1-dimensional in space, it is three-dimensional in velocity and consequently keeps track of the electric and magnetic fields in three dimensions. This choice was made to reduce computation time and memory requirements while testing the complete behaviour of the ECSIM algorithm. Figures \ref{fig: 1D-3V-sim} and \ref{fig: 1D-3V-convergence} show the same results for CASE IV as Figures \ref{fig: 1D-1V-sim} and \ref{fig: 1D-1V-convergence} for CASE III. These figures demonstrate that second-order convergence is achieved for the position, velocity, and electric and magnetic fields while conserving energy up to machine precision.
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=1\linewidth]{figures/eps/Sim_plots_3D.eps}
+    \caption{Phase space and energy conservation of transverse stream instability, blue: positive $\textbf{v}_y$, red: negative $\textbf{v}_y$.}
+    \label{fig: 1D-3V-sim}
+\end{figure}
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=1\linewidth]{figures/eps/ECSIM3DConvergence.eps}
+    \caption{Convergence of ECSIM on the transverse stream instability.}
+    \label{fig: 1D-3V-convergence}
+\end{figure}
+\newline
+We now use the ECSIM method for both the fine and coarse solver in parareal to simulate CASE IV, using the same spatial discretisation parameters. The coarse solver uses the same timestep size of $10^{-2}$, while the step size of the fine solver is reduced further and further. This analysis gives the same convergence plot as the serial case as long as the tolerance used in parareal is more accurate than the lowest achieved accuracy for any of the state variables. Similar to CASE I, the required number of parareal iterations and their respective state changes, shown in Figure \ref{fig: 1D-3V-parareal-convergence}, are not encouraging. The difference between iterations rises before going down, and the number of parareal iterations equals the number of timesteps. One can either coarsen the grid discretisation or use smaller timestep sizes for the coarse solver to solve this issue. 
+Figure \ref{fig: 1D-3V-parareal-convergence} shows the convergence of parareal for simulating CASE IV using 512 grid cells, 10000 particles, a fine timestep size of $10^{-4}$ and a coarse step of $10^{-2}$. 
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=1\linewidth]{figures/eps/3D_parareal_Convergence.eps}
+    \caption{Internal Parareal convergence for a poorly conditioned CASE IV.}
+    \label{fig: 1D-3V-parareal-convergence}
+\end{figure}
+% These convergence plots need to be looked at with background information, namely the timespan over which the simulations are performed. CASE III and CASE IV are unstable systems; this means that small perturbations will grow exponentially over long periods. The rounding errors performed during computer calculations are such perturbations and, as such, will give different solutions over long periods \pjd{this should not happen unless you have some randomised initial condition. Perturbations may not be random...}. The convergence plots above are calculated for short periods. The chaotic behaviour of the test cases means that the Parareal solution will deviate from the serial solution for longer timeframes. This does not mean that Parareal cannot be used on these systems for more extended periods. Serial solutions also suffer from these effects when using different methods or compilers. However, as stated in \cite{d_samaddar_parallelization_2010}, the statistical properties of all these simulations are the same, and the deviations are bounded by the energy in the system. 
+\newline 
+It is worth noting that when Parareal checks for convergence, it estimates the error compared to the fine solution as the relative change in the state variables over two consecutive iterations. This means that for a converging algorithm, one would hope the actual\bram{don't use actual}\pjd{what do you mean by actual error?} error compared to the fine solution to be bounded by the state change. This can be seen in Figure \ref{fig: error-vs-statechange} where the maximal errors compared to the fine solution and the maximal state changes are shown per iteration. 
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=1\linewidth]{figures/eps/est_vs_act_err_parareal_check.eps}
+    \caption{Actual error compared to the fine solution and estimated error during each parareal iteration.}
+    \label{fig: error-vs-statechange}
+\end{figure}
+\pjd{What's the difference between figs 4.10 and 4.11? This should be apparent from the captions.}
+
+While exact energy conservation is not a goal for the current work, it should be noted that for these test problems, it was not necessary to use a tolerance equal to the machine precision for parareal to obtain energy conservation up to machine precision. \pjd{good point, but hard to understand. Please rephrase.} This manifests itself in the other experiments, where the error incurred in energy is significantly smaller than the estimated error for the state variables. This is shown in figure \ref{fig: energy-vs-statechange}, where the energy conservation of the solution is plotted for several iterations alongside the max state changes.
+
+These results, supplemented by the fact that for practical simulations, one often does not desire the fine solution to be accurate up to machine precision, lead to the practical observation that one can often get very good (almost exact) energy conservation while using more lenient tolerances, e.g., $10^{-10}$ or $10^{-12}$. This is especially useful, as it is often not desirable to approximate the fine solution up to machine precision since the fine solver itself is often only a discretised approximation of the actual solution.
+ \begin{figure}[h]
+    \centering
+    \includegraphics[width=1\linewidth]{figures/eps/est_vs_energy_err_parareal_check.eps}
+    \caption{Error in energy and the max state change during each parareal iteration}
+    \label{fig: energy-vs-statechange}
+\end{figure}
+
+%%% ============================================================================================ %%%
+
+\section{Temporal Coarsening}
+
+The choice of fine and coarse integrators for parareal can massively influence the algorithm's performance. It is thus detrimental to decide on a good combination. It is well-known that, due to the order of accuracy associated with the method, using smaller timestep sizes in ODE solvers results in more accurate solutions than larger step sizes. Using the same integrator method for both the coarse and fine solver while employing a large timestep size for the coarse solver and a smaller step size for the fine solver constitutes a natural choice for a parareal implementation. The coarse solver is expected to yield a ``rougher'' solution estimate at every coarse time point compared to the fine solver. Suppose $n$ fine timesteps are computed for each coarse timestep using an ODE solver of order $l$. In that case, the error incurred by the fine integrator is expected to be a factor $\mathcal{O}(n^l)$ smaller than the coarse approximation. 
+This choice of fine and coarse solver also allows for easy comparisons in terms of computational complexity between the fine and coarse. If the fine solver performs $100$ steps for each coarse step, one would expect that it is $100$ times slower than the coarse solver.
+\newline 
+To define the fine and coarse timestep sizes, we fix one and calculate the other based on the chosen ratio $n$. We now show how this factor influences the performance of parareal by plotting the speedup for increasing $n$.
+
+The first experiment chooses the coarse step size as a constant and reduces the fine size. Although this allows us to show speedup results approaching the theoretical limit from \ref{eq: speedup}, it is practically less valuable. In a typical use case, a certain accuracy is desired over the simulation time period. Since parareal will approach the accuracy of the fine solver, the fine integrator should reach the desired accuracy. This means the fine time step size is connected to the desired accuracy, and as such, it does not make sense to go to much smaller step sizes, even if the speedup would be better.  \pjd{I don't understand this sentence, and why is it less valuable?} Therefore, it is also informative to show how the best coarse solver can be chosen for a given fine time step.
+
+Figure \ref{fig: temporal-refining} shows the effect of reducing the fine timestep size, $\Delta t_F$, more and more while keeping the coarse timestep size, $\Delta t_G$, constant at $10^{-2}$. The experiment was run on one CPU of the VSC, using 48. According to the theoretical speedup \ref{eq: speedup}, the best speedup is bounded by $24$ since the parareal algorithm always needs $2$ iterations. The graph shows that making the fine solver more expensive helps attain higher speedup. This means it is beneficial to perform parareal when a very fine discretisation is desired. \bram{move up}Of course, in practice, it would not be beneficial to artificially increase the accuracy in the time domain to be in a region of high speedup since the actual time parareal needs to complete its calculations does increase when the fine timestep decreases. This upward motion is only warranted by the assumption that the number of needed parareal iterations remains the same, which is the case in the tested results. This is likely due to the coarse timestep already being very small to account for the non-converging parareal iterations. Since ECSIM is second-order accurate, the errors on the solution should already be relatively small. This allows parareal to converge quickly.
+ \begin{figure}[h]
+    \centering
+    \includegraphics[width=1\linewidth]{figures/eps/time_step_constant_coarse.eps}
+    \includegraphics[width=1\linewidth]{figures/eps/time_step_constant_fine.eps}
+    \caption{Speedup for Parareal using temporal coarsening.}
+    \label{fig: temporal-coarsening}
+\end{figure}
+
+Figure \ref{fig: temporal-coarsening} shows a more practically useful plot \pjd{why is this more practically helpful?}, where a time step size of $10^{-4}$ is used in the fine solver and different coarse step sizes are simulated. As the number of coarse time steps increases, the speedup obtained increases to a certain point before it plummets. This may be explained as follows: choosing a very cheap solver reduces serial computational time, thereby speeding up the simulations. However, the cheap coarse solver may not yield reasonably accurate solutions, necessitating additional parareal iterations that can negate the computational gains obtained from choosing a cheap coarse solve. It can be seen in Fig. \ref{fig: temporal-coarsening} that one obtains the largest speedup for a $\Delta t_G/\Delta t_F = 32$. Here, the approximation of the coarse solver is accurate enough for the parareal algorithm to converge within a reasonable number of iterations without incurring significant overhead. Further reductions in the coarse time step size to get more accurate coarse solutions and, consequently, reduce the number of parareal iterations prove to be counter-productive. This explanation is further supported by Figure \ref{fig: temporal-coarsening-iterations} where the number of needed parareal iterations is plotted for each point in \ref{fig:temporal-coarsening}. The number of iterations remains constant until $\Delta t_G/\Delta t_F = 32$, after which the number of iterations rises quickly.
+ \begin{figure}[h]
+    \centering
+    \includegraphics[width=0.49\linewidth]{figures/eps/time_step_constant_coarse_speedup.eps}
+    \includegraphics[width=0.49\linewidth]{figures/eps/time_step_constant_fine_speedup.eps}
+    \caption{Speedup for parareal using different accuracies.}
+    \label{fig: temporal-coarsening-speedup}
+\end{figure}
+ \begin{figure}[h]
+    \centering
+    \includegraphics[width=1\linewidth]{figures/eps/time_step_constant_fine_speedup}
+    \caption{Iterations needed for parareal to converge when coarsening the coarse timestep size more and more.}
+    \label{fig: temporal-coarsening-iterations}
+\end{figure}
+
+\subsubsection{Subcycling}
+\label{sub: subcycling}
+
+The standard particle-in-cell algorithm consists of four steps, performed cyclically. Firstly, the particles move during the \textbf{particle mover}, after which they are collected and projected onto the grid to compute the current and charge density. These currents and charge densities at each grid cell are then used during the \textbf{field solver} section to calculate the change in electric and magnetic fields. These new forces are then projected onto the particles, whose movement will be influenced in the next \textbf{particle mover} step. If we reduce or increase the timestep size, this does not influence this cycle. There is, however, an adaptation of the algorithm that does change the underlying iteration scheme. The modification in question is called subcycling and consists of performing the \textbf{particle mover} multiple times before moving on to the \textbf{field solver}. In this setting, the time step is subdivided into $\nu$ (not necessarily equal sized) substeps, $\Delta t_\nu$. The particles then move $\nu$ times influenced by the same constant fields, after which the (weighted) average of the positions and velocities are used to update the fields. These fields are then projected onto the particles, and the cycle starts anew. Subcycling can reduce computational costs in situations where the dynamics of the particles are much faster than those of the fields. This allows for the timestep size, $\Delta t$, to be chosen based on the dynamics of the slower fields. In contrast, the substep sizes $\Delta t_\nu$ are chosen to be small enough to accurately approximate the movement of the particles. Often, particles move in cyclotron orbits; in situations like these, it is also possible to use subcycling for gyro-averaging. This is done by selecting $\Delta t$ to step over the gyration time scale while using the $\Delta t_\nu$ to average the movement during the gyromotion.
+
+We now turn our attention to using subcycling for the coarse solver in parareal. We use subcycling during the coarse integrator to obtain a more accurate approximation of the fine solution without incurring the high costs of reducing the coarse time step size, which would require performing more steps. A second approximation is made during the implemented subcycled ECSIM code; the velocity is kept constant across the subcycles. This allows us to calculate all of the subcycles simultaneously. This parallelisation can use the unused, idle cores during the serial calculations of the coarse integrator. Since each subcycle can be calculated in (almost) perfect parallelism, the expected cost of subcycling is negligible under the constraint that the number of subcycles remains lower than or equal to the number of cores available. Our ECSIM code implements subcycling by injecting $\nu-1$ extra equispaced time points in each time step, at which only the position is updated. These positions are then averaged during the \textbf{field solver} to obtain a more accurate solution. This hopefully decreases number of iterations parareal needs to converge.
+
+\bram{add values}It can be seen in Figure \ref{fig: temporal-subcycling-errors} that the accuracy does indeed increase for more subcycles. This can also be noticed in the number of time steps that converge after each parareal iteration, which increase along with the number of subcycles. Figure \ref{fig: temporal-subcycling}, however, shows that one fails to obtain any improvement in the computational cost incurred. This is due to parallelisation overhead and the need to average the positions of the particles after the subcycles. The decrease in estimated errors and increased number of time steps converging per parareal iteration, do give hope that the method is viable in specific situations. Example situations would involve many time steps and typically exhibit poor convergence for the parareal algorithm, requiring numerous iterations.
+
+% Instead of not doing any calculations on the fine time steps in the coarse solver, it is possible to approximate the fine solver while not performing all the calculations. This can be done using subcycling. When subcycling is used, the coarse solver injects points between its regular time steps, where it will only calculate the new position and velocity of the particles. These additional positions and velocities will then later be averaged in the regular time points to calculate a more accurate solution. This can be even more simplified by assuming constant velocity, enabling these calculations' parallelism. This can be very computationally cheap. This is because in Parareal when no pipelining is used, only one core performs any calculations during the coarse solver. When subcycling is used in the coarse solver, these idle cores can be employed to parallelise the subcycle calculations. Supposing the number of subcycles equals the number of available cores, these can all be done in perfect parallelism (besides parallelisation overhead). This is especially useful since "\textit{The particle mover is by far the largest user of CPU time in the typical cycle.}" \cite{lapenta_exactly_2017}.
+
+% Unfortunately, results show that, while the approximation is better, it is often not enough to offset the small extra cost. Figure \ref{fig:temporal-subcycling} shows the speedup for different amounts of subcycling, where 1 means no subcycling.
+%  While solutions are more accurate, this only offsets the computational overhead enough if a Parareal iteration can be skipped because of this. \color{red}Since the solutions are more accurate, this means that it would be beneficial in some cases.\color{black}
+  \begin{figure}[h]
+    \centering
+    \includegraphics[width=1\linewidth]{figures/eps/subcycle_speedup.eps}
+    \caption{Speedup of the parareal simulation compared to a serial fine solve, using different amounts of subcycling.}
+    \label{fig: temporal-subcycling}
+\end{figure}
+
+  \begin{figure}[h]
+    \centering
+    \includegraphics[width=1\linewidth]{figures/eps/subcycle_parareal_convergence.eps}
+    \caption{Estimated errors during parareal iterations for different amounts of subcycling.}
+    \label{fig: temporal-subcycling-errors}
+\end{figure}
+
+\section{Core Scaling}
+\pjd{Hard to read -- rephrase first sentence}
+In chapter \ref{cha: pint}, two strategies are discussed to simulate long time frames; [A] each processor gets multiple coarse steps assigned to it, or [B] the time domain is split into separate chunks on which parareal is performed in serial. These can be used when the number of available cores is insufficient to assign a separate processor to each coarse time step.\bram{The trade-offs will be discussed in the referred-to chapter}
+We will now discuss a core aspect of any parallel algorithm: the scalability with respect to the number of cores used. This information is crucial in deciding which strategy is most fitting for the scenario. This section assumes that the number of time steps equals the number of cores. Figure \ref{fig: core scaling} demonstrates how the speedup (left) and parallel efficiency (right) change depending on the number of time steps. The speedup steadily rises with the increase in cores, however, the parallel efficiency shows that this increase is not commensurate with the extra cores used. It insinuates that it can be more efficient to split up the time domain into multiple sequential parareal sections when long-duration simulations are desired. To remedy this, one could consider even larger time step sizes for the coarse solver to more quickly cross large time spans. \pjd{good point, rephrase to something like..... or parallelise on multiple computing nodes using MPI to facilitate the usage of many coarse time steps. This would constitute a subject for future work.\bram{how would this help}} 
+  \begin{figure}[h]
+    \centering
+    \includegraphics[width=1\linewidth]{figures/eps/core_scaling_test.eps}
+    \caption{Parallel efficiency of the Parareal algorithm for increasing number of cores, where each core is assigned to one coarse timestep. \pjd{This plot shows negative results. Can you also plot the computational time as a function of simulation time (relative to 1 core) \bram{the speedup?}? Include number of cores on the X-axis.}}
+    \label{fig: core scaling}
+\end{figure}
+
+%%% ============================================================================================ %%%
+
+\section{Linear Solvers}
+
+Here, we investigate the performance of some widely used (direct and indirect) solvers to approximate the solution to the linear system of equations obtained by discretising Maxwell's equations. Direct solvers have the benefit of computing the solution \textit{exactly}; however, they may be computationally prohibitive for large systems. In a serial context, the solution should be accurate up to machine precision due to the desired exact energy conservation. Since the basic Parareal algorithm does not conserve this property \cite{gander_analysis_2014}, it must iterate to highly stringent tolerances to achieve machine precision accuracy. Since total energy conservation is not a requirement for this work, more options are available to solve this linear system. The matrix resulting from the linear system is sparse and has a block-diagonal structure, which lends itself to iterative solvers. 
+Nevertheless, we consider the \textbf{LU} decomposition method along with the commonly used iterative solvers, \textbf{GMRes} and \textbf{BiCGStab} \cite{youcef_saad_martin_h_schultz_gmres_1986,van_der_vorst_bi-cgstab_1992}. We investigate the effect of choosing different combinations of these three, for the coarse and fine solvers. \bram{is this not only the case when initial guesses are used} \pjd{It is known that the computational cost of an iterative solver depends on the time step size **cite papers**, whereas the cost of a direct solver is independent of it. } \bram{i think this is a more general statement} It is known that the computational cost of an iterative solver depends on the initial guess, whereas the cost of a direct solver is independent of this. This insinuates that if one chooses the previous solution as an initial guess, a large time step for the coarse solver would make an \textbf{LU} decomposition more favourable than an iterative solver. It would, after all, be expected that the large timestep induces a greater difference between the previous and next solution. However, for the fine solver that considers multiple small time steps, an iterative solver may need just a few iterations to converge and, consequently, may be faster than the LU method. To test this hypothesis, different permutations of the linear solvers are used for the fine and coarse integrators. Special care is taken to choose a proper value for the user-defined tolerance for the parareal algorithm and the iterative solver under consideration. Finally, different preconditioners are employed to speed up the convergence of the iterative solvers.
+
+Unfortunately, the discretisation matrix is not symmetric, invalidating specific solvers, such as Cholesky-based decompositions. The diagonal dominance of the underlying matrix also makes it suitable for iterative solvers, such as the generalised minimal residual method. In these experiments, there will not be any change between runs of the problem statement; only the solvers will be different; thus, any decrease in runtime indicates a positive result.
+
+\subsection{Sparse Lower Upper Decomposition}
+Lower Upper Decomposition factorises a matrix $\textbf{A}$ into a lower triangular matrix $\textbf{L}$ and upper triangular $\textbf{U}$ such that $\textbf{A} = \textbf{LU}$. To ensure a proper decomposition for any square matrix, it might be necessary to perform a permutation \pjd{permutation of what?} of rows so that there are no 0 elements on the diagonal of $\textbf{A}$ at each step. This is called LU decomposition with partial pivoting. This leads to $\textbf{PA} = \textbf{LU}$; in the sparse case, this permutation matrix $\textbf{P}$ is also chosen to minimise fill-in. Fill-in is the occurrence of a non-zero in the $\textbf{L}$ or $\textbf{U}$, while the element at the same place in the $\textbf{A}$ matrix is zero. The factorisation matrices can cheaply compute the solution to the linear system using forward and backward substitution.
+
+\subsection{Generalised Minimal Residual Method}
+GMRES is an iterative linear solver based on Krylov subspaces, starting from a given initial guess $\textbf{x}_0$. The n-th Krylov subspace can be written as $K_n = \mathrm{span}(\{\textbf{A}\textbf{x}_0-\textbf{b}, \textbf{A}(\textbf{A}\textbf{x}_0-\textbf{b}),...,\textbf{A}^{n-1}(\textbf{A}\textbf{x}_0-\textbf{b})\})$. The solution $\textbf{x}$ is approximated at iteration n by $\textbf{x}_n = \textbf{x}_0 + \textbf{Q}_n \textbf{y}_n$, where $\textbf{Q}_n$ is an orthogonal basis for $K_n$ and $\textbf{y}_n$ are the coefficients that minimise the error $\|\textbf{x}-\textbf{x}_n\|$. \textbf{GMRES} can suffer from storage and computational issues as the dimension of the Krylov subspace increases. \textbf{GMRES} must store the Hessenberg matrix, which contains all the orthogonal vectors forming the orthogonal basis. Additionally, it has to orthogonalize each new vector against all previously computed vectors, which can become quite costly. This can be remedied by ``restarting'' the algorithm. This involves starting a new \textbf{GMRES} algorithm using the previously found solution as the initial guess. The method is often used to solve large sparse systems and can be applied to any nonsingular square matrix.\bram{cite usage}
+
+
+\subsection{Biconjugate Gradient Stabilized Method}
+The biconjugate gradient stabilized method, as the name suggests, is based on the biconjugate gradients method, which in turn is a generalisation of the conjugate gradients method. Like the Cholesky decomposition-based methods, the conjugate gradient method is not feasible due to the non-symmetric nature of the matrix in question. The biconjugate gradient method can solve non-symmetric systems; however, it is numerically unstable, leading to the use of the \textbf{BiCGSTAB} in practical applications. The \textbf{BiCGSTAB} algorithm performs two BiCG steps followed by a stabilization step. \bram{still need to write more}
+\bram{cite usage}
+
+The use of an iterative solver necessitates a user-specified tolerance to define convergence for the solution of the linear system. One of the key findings of this work indicates that this choice cannot be made without considering the tolerance chosen for parareal. Our findings suggest that a tolerance must be chosen at least two orders of magnitude lower than the one used for parareal. Otherwise, the convergence of parareal is inhibited and the error estimation during parareal is no longer trustworthy. This is clearly demonstrated in Table \ref{tab:tolerance_lin_solver}, where the required amount of parareal iterations is shown for different ratios of tolerances while using \textbf{GMRES}. When the tolerances for parareal and the linear solver are both $10^{-8}$, the number of parareal iterations is much higher than when the tolerance for the linear solver is more stringent. The actual errors incurred compared to the serial solution also show concerning behaviour for both a tolerance of $10^{-8}$ and $10^{-9}$. While parareal has converged, meaning the estimated error is lower than $10^{-8}$, Table \ref{tab:tolerance_lin_solver} shows that the actual error compared to the serial solution is larger. This indicates that the error estimation is not trustworthy when the difference in tolerances is large enough.
+\begin{table}[htbp]
+    \centering
+    \label{tab:tolerance_lin_solver}
+    \begin{tabular}{|c|c|c|c|}
+        \hline
+        \textbf{Tolerance}& $10^{-8}$ & $10^{-9}$ & $10^{-10}$ \\
+        \hline
+         Number of parareal iterations & 6 & 2 & 2 \\
+         Error (w.r.t serial) & 2.77$\cdot10^{-7}$ & 3.25$\cdot10^{-8}$ & 4.45$\cdot10^{-9}$ \\
+        \hline
+    \end{tabular}
+    \caption{Results of parareal on CASE I using different tolerances for the linear solver in comparison to the $10^{-8}$ tolerance of parareal. \pjd{use $3.25 \cdot 10^{-8}$, change everywhere} \pjd{include 1 more section where you do the same, except tol for parareal = $10^{-9}$}}
+\end{table}
+
+\begin{table}[htbp]
+    \centering
+    \label{tab:tolerance_lin_solver}
+    \begin{tabular}{|c|c|c|c|}
+        \hline
+        \textbf{Tolerance}& $10^{-8}$ & $10^{-9}$ & $10^{-10}$ \\
+        \hline
+         Number of parareal iterations & 6 & 2 & 2 \\
+         Error (w.r.t serial) & 2.77e-07 & 3.25e-08 & 4.45e-09 \\
+        \hline
+    \end{tabular}
+    \caption{Results of parareal on CASE I using different tolerances for the linear solver in comparison to the $10^{-9}$ tolerance of parareal. \pjd{use $3.25 \cdot 10^{-8}$, change everywhere} \pjd{include 1 more section where you do the same, except tol for parareal = $10^{-9}$}}
+\end{table}
+
+We now consider the use of different linear solvers. This could allow for better speedup or computational runtime. A possible strategy is to use a very accurate but slow direct LU solver for the fine solution for high accuracy while using a less accurate iterative solver in the coarse. However, using a coarse timestep could lead to more iterations before the iterative solvers converge to the desired accuracy, thus increasing the overall computational time. The results from performing the same simulation using each combination of linear solvers can be seen in the bar plot (Figure \ref{fig: linear solver combination}). The left panel shows the speedup achieved, and the right panel illustrates the computational runtime for each combination under consideration. Each cluster of three bars indicates the use of a different fine solver. Each blue bar indicates a simulation where the coarse solver uses an LU solver, the orange bars represent \textbf{GMRES} solvers, and the green corresponds to \textbf{BiCGSTAB}. While both bar plots are important, the right plot is essential in understanding the influence of the different solvers. The bar plot on the left clearly shows a preference for a costly LU solver for the fine integrator. However, this may be misleading as one has to consider the overall computational runtime. The figure on the right shows that it is best to use iterative solvers for both the fine and coarse solvers, and there is no significant difference between \textbf{GMRES} and \textbf{BiCGSTAB}. This discrepancy in interpretation is caused by the difference in computational runtime caused by the multiple fine solvers. The simulation was run with a relatively small coarse time step size of $10^{-3}$ to ensure a good parareal convergence.
+
+The solutions are all equally accurate to their respective serial solutions. However, suppose one were to consider the LU solution to be the most accurate solution. In that case, it is evident that the solutions obtained using iterative methods with a tolerance more lenient than machine efficiency for the fine integrator would obtain worse results. This was also observed. Interestingly, the error obtained compared to this LU reference was larger than the tolerance used for the linear solver while smaller than the tolerance used for parareal.\pjd{Compare solution accuracy}
+  \begin{figure}[h]
+    \centering
+    \includegraphics[width=1\linewidth]{figures/eps/solver_test.eps}
+    \caption{Left: Speedup for parareal simulation using different combinations of linear solvers for coarse and fine. Right: Time needed for parareal simulation using different combinations of linear solvers for coarse and fine.}
+    \label{fig: linear solver combination}
+\end{figure}
+
+\subsection{Preconditioners}
+Preconditioners are transformations performed on the linear system to improve the convergence rate of linear solvers. Here we define preconditioners to be the inverse of a matrix $\textbf{P}$ defined so that $\textbf{P}^{-1}A$ has an increased convergence rate for iterative methods that solve $\textbf{Ax} = \textbf{b}$. This means a preconditioned system will solve $\textbf{P}^{-1}\textbf{Ax} = \textbf{P}^{-1}\textbf{b}$. Three different types of preconditioners will be tested. The first preconditioner is the identity matrix, i.e., no preconditioning. The second is the Jacobi preconditioner. The preconditioning matrix corresponds to the diagonal of the matrix $\textbf{A}$; it should perform well for diagonally dominant matrices. The final preconditioner that is examined is the incomplete LU factorisation. The general idea of incomplete LU is to factorise $\textbf{A}$ into the product of a lower and upper triangular matrix such that $\textbf{A} \approx \textbf{LU}$, where $\textbf{L}$ and $\textbf{U}$ share a sparsity pattern with $\textbf{A}$. This reduces memory requirements whilst providing a rough estimate of the solution. One can then use this solution as a starting point.
+
+Figure \ref{fig: preconditioners} contrasts the performance of the three preconditioners under consideration for different time step sizes (serial implementation) for CASE IV. While there is no significant difference between the identity and Jacobi preconditioners, one can clearly see that the incomplete \textbf{LU} decomposition is faster when the time step size is larger and slower than the other preconditioners when the step size is reduced. While the incomplete LU preconditioner is more expensive to calculate\pjd{you can't genralise that... for large time step sizes Jacobi/diagonal may be slower than ILU}, the iterative solver only needs 1 to 2 iterations afterwards to solve the system during the test. This contrasts the identity and Jacobi preconditioners, which are fast \pjd{you can't generalise that! rephrase} but might not help the solver converge fast, leading to many iterations when the initial guess is inaccurate.
+ \begin{figure}[h]
+    \centering
+    \includegraphics[width=1\linewidth]{figures/eps/precond_test.eps}
+    \caption{Time needed for serial solve of CASE 4 using different preconditioners for \textbf{GMRES}.}
+    \label{fig: preconditioners}
+\end{figure}
+
+% \begin{table}[htbp]
+%     \centering
+%     \caption{Timing and iteration count with different preconditioners}
+%     \label{tab:timing_iteration_preconditioners}
+%     \begin{tabular}{|c|c|c|c|}
+%     \hline
+%     \textbf{Time Step} & \textbf{Identity} & \textbf{Jacobi} & \textbf{Incomplete LU} \\
+%     \hline
+%     0.01 & $(915, 200)$ & $(1054, 200)$ & $(242, 1)$ \\
+%     0.005 & $(1186, 125)$ & $(1303, 122)$ & $(484, 1)$ \\
+%     0.0025 & $(1052, 29)$ & $(1146, 30)$ & $(1013, 1)$ \\
+%     0.00125 & $(1552, 14)$ & $(1587, 14)$ & $(2009, 1)$ \\
+%     0.000625 & $(2734, 9)$ & $(2705, 9)$ & $(3901, 1)$ \\
+
+%     \hline
+%     \end{tabular}
+% \end{table}
+
+%%% ============================================================================================ %%%
+
+\section{Discussion}
+
+\pjd{Suggestion: remove this section. If you think something's really important, include it in the previous (sub)sections. Non-smooth initial data does not require detailed analysis. Generally, you never start with non smooth data. Turbulence or shocks develop in simulations as result of the initial/boundary conditions and other physical effects.}
+
+While the previous section showed the results of the different experiments, they will be linked together in this section. There are, after all, interesting interplays between the results that must not be overlooked. For a first example of the interconnection, one must look at the behaviour of Parareal for the non-smooth initial conditions outlined in \ref{sec: convergence}. It is clear that the convergence of Parareal strongly depends on the smoothness of the solution; in the case of non-smoothness, Parareal requires an accurate coarse solver, or it will not converge in an orderly fashion, sometimes even diverging. As a result one would prefer to use Parareal on smooth problems. If this is not the case, a more accurate coarse solver is needed, thus lowering the possible speedup. This, however, already determines the mode in which the linear solver will have to operate, more likely in the region where iterative solvers with quick preconditioners are best. The required small timesteps for the coarse solver also mean that many steps would be needed to cover more extended periods, which was found to not help the speedup of the algorithm. This means a more relaxed "CFL"-esque condition would significantly increase the number of possible implementations and use cases. \color{red} This this effect might be caused by particles moving so fast between time points that cells never experience their presence in the coarse solver. In this case, it might be possible to decrease the effect by increasing the b-splines' order in the particle-in-cell method so that a single particle influences more grid cells. Also need to check whether the "CFL" condition is worse for parareal or the same as the linear.\color{black}
+
+%%% Local Variables: 
+%%% mode: latex
+%%% TeX-master: "thesis"
+%%% End: 

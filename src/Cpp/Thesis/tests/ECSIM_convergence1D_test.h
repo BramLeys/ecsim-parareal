@@ -14,7 +14,7 @@ int ECSIM_convergence1D_test(int argc, char* argv[]) {
     int Nx = 128; // number of grid cells
     double L = 2 * EIGEN_PI; // Size of position space
     int Np = 10000; // number of particles
-    double dt = 1e-1;
+    double dt = 1e-2;
     int num_thr = 12;
     double T = 0;
     int refinements = 5;
@@ -45,10 +45,10 @@ int ECSIM_convergence1D_test(int argc, char* argv[]) {
             return 1;
         }
     }
-    T = T == 0 ? 1 : T;
+    T = T == 0 ? 5e-1 : T;
 
     ArrayXd xp(Np), qp(Np), vp(Np), E0(Nx), Bc(Nx);
-    TestProblems::SetTwoStream(xp, vp, E0, Bc, qp, Nx, Np, L);
+    TestProblems::SetConvergence(xp, vp, E0, Bc, qp, Nx, Np, L);
 
     auto G = ECSIM<1, 1>(L, Np, Nx, 1, dt, qp);
     auto solver = ECSIM<1, 1>(L, Np, Nx, 1, dt / 100, qp);

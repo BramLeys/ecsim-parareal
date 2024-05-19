@@ -14,8 +14,8 @@ from matplotlib import rc
 rc('text', usetex=True)
 
 ### Read files
-data = np.loadtxt("./simulation_result1D.txt")
-energy = np.loadtxt("./simulation_energy1D.txt")
+data = np.loadtxt("../../../../paper/Results/simulation_result1D.txt")
+energy = np.loadtxt("../../../../paper/Results/simulation_energy1D.txt")
 
 ### Set parameters
 Np = 10000
@@ -35,7 +35,7 @@ NT = energy.shape[0]-1
 dt = 0.125
 ts = np.linspace(0, NT*dt, NT+1)
 
-fig = plt.figure(figsize = (14, 8), dpi = 300)
+fig = plt.figure(figsize = (12, 10), dpi = 400)
 plt.subplot(3, 1, 1)
 
 # initial conditions
@@ -54,11 +54,11 @@ plt.scatter(x_t, v_t, c = "blue", marker = ".")
 plt.xlim(0, 2*np.pi)
 # plt.yticks([-0.10, -0.05, 0.00, 0.05, 0.10])
 
-plt.title("Initial condition", fontsize = 24)
-plt.xlabel("X (m)", fontsize = 22)
-plt.ylabel("Velocity \n(m/s)", fontsize = 22)
+plt.title("Phase space at t = 0s", fontsize = 30)
+plt.xlabel("X (m)", fontsize = 25)
+plt.ylabel("Velocity \n(m/s)", fontsize = 25)
 
-plt.tick_params(axis = 'x', which = 'major', labelsize = 18, length = 8)
+plt.tick_params(axis = 'x', which = 'major', labelsize = 20, length = 8)
 plt.tick_params(axis = 'y', which = 'major', labelsize = 20, length = 8)
 
 ### ----------------------------------- ###
@@ -81,11 +81,11 @@ plt.scatter(x_t, v_t, c = "blue", marker = ".")
 plt.xlim(0, 2*np.pi)
 # plt.yticks([-0.10, -0.05, 0.00, 0.05, 0.10])
 
-plt.title(f"Phase Space at t = {dt*NT}s", fontsize = 24)
-plt.xlabel("X (m)", fontsize = 22)
-plt.ylabel("Velocity \n(m/s) ", fontsize = 22)
+plt.title(f"Phase space at t = {dt*NT}s", fontsize = 30)
+plt.xlabel("X (m)", fontsize = 25)
+plt.ylabel("Velocity \n(m/s) ", fontsize = 25)
 
-plt.tick_params(axis = 'x', which = 'major', labelsize = 18, length = 8)
+plt.tick_params(axis = 'x', which = 'major', labelsize = 20, length = 8)
 plt.tick_params(axis = 'y', which = 'major', labelsize = 20, length = 8)
 ### ----------------------------------- ###
 
@@ -93,9 +93,9 @@ plt.subplot(3, 1, 3)
 
 plt.semilogy(ts[:],abs(energy[:]-energy[0])/energy[0], "b-")
 
-plt.title(r"\textit{Exact} energy conservation", fontsize = 24)
-plt.xlabel("Simulation time (s)", fontsize = 22)
-plt.ylabel("Error in energy", fontsize = 22)
+plt.title(r"\textit{Exact} energy conservation", fontsize = 30)
+plt.xlabel("Simulation time (s)", fontsize = 25)
+plt.ylabel("Error in energy", fontsize = 25)
 
 plt.tick_params(axis = 'x', which = 'major', labelsize = 20, length = 8)
 plt.tick_params(axis = 'y', which = 'minor', labelsize = 20, length = 4)
@@ -107,6 +107,7 @@ plt.xlim(-0.2, NT*dt + 0.3)
 ### ----------------------------------- ###
 
 fig.tight_layout(rect = [0.0, 0.0, 1.0, 1.0])
-plt.savefig("./Sim_plots_1D.eps")
+plt.savefig("./figures/eps/Sim_plots_1D.eps")
+plt.savefig("./figures/png/Sim_plots_1D.png")
 
 ### ========================================================================== ####

@@ -100,7 +100,7 @@ int parareal_convergence_test(int argc, char* argv[])
 	if (initialisation == "random")
 		Xn = VectorXd::Random(N);
 	else
-		Xn = (2 * ArrayXd::LinSpaced(N, 0, L - dx-1)).sin() + 5;
+		Xn = (2 * ArrayXd::LinSpaced(N, 0, L - dx)).sin() + 5;
 	MatrixXd X_para(N, NT + 1);
 	VectorXd Yn_ref(N);
 	MatrixXd Yn_ser(N, NT + 1);

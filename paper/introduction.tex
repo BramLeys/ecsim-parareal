@@ -1,0 +1,94 @@
+\chapter{Introduction}
+\label{cha: intro}
+
+\pjd{enumerate equations as needed}
+
+
+This first chapter describes the background of the thesis as well as the goals and modus operandi. In section \ref{sec: intro plasma}, plasma is described, how it is formed and some of its characteristics. Different approaches to calculating the evolution of plasma are also briefly described. 
+These plasma dynamics can be described using differential equations, section \ref{sec: DE} therefore briefly gives some background on these equations and how they are traditionally solved. 
+This chapter ends with section \ref{sec: goals and approach} where the goals and methodology of the rest of the paper are presented.
+
+The rest of the thesis is subdivided into four other chapters. 
+In chapter \ref{cha: pic} special attention is given to particle-in-cell methods since these are the type of plasma simulation algorithm used in this work.  
+Parallel-in-time methods are introduced in chapter \ref{cha: pint}, which will be used to speed up the calculation of the chosen particle-in-cell method. 
+Chapter \ref{cha: methods and results} reports on the performed experiments. These will demonstrate desired properties such as speedup, accuracy and conservation of energy. 
+The final chapter \ref{cha:conclusion} contains the conclusions of this thesis.
+
+
+\section{Plasma}
+\label{sec: intro plasma}
+\color{red}
+Plasma is a state of matter separate from solid, fluid and gas, where the atoms or molecules have been excited to high enough energies that the electrons are being stripped away from the nuclei. In our daily lives, we might encounter plasma a couple of times, for example, in lightning or neon signs, but in space, it is the most common state for matter, making up about 99.9\% of the observable universe\cite{noauthor_plasma_nodate}. The sun, for example, is made out of plasma, and current research is trying to replicate the fusion that occurs in the sun's plasma to satisfy our energy demands \cite{degrave_magnetic_2022}.  
+\newline
+Plasma can be characterized in a couple of ways, one of which is its Debye length, $\lambda_D$. This value describes how the electric potential changes around a point charge:
+\[\varphi(x) = \varphi_0 e^{-\frac{x}{\lambda_D}}\]  
+This indicates that plasma creates a shield around any introduced local charges, as to minimise influence at large distances from this perturbation. If $n$ defines the density of the plasma, then the number of particles in a cube, whose sides are as long as the Debye length, is equal to $N_{D} = n \lambda_D^3$. This number, in turn, is used to calculate the plasma parameter $\Lambda = 6 \pi N_D^{\frac{2}{3}}$, which is a measure of the plasma coupling. If $N_D$ is small, there would only be a couple of particles nearby at each point in space. This means that if another particle gets closer or one of the present particles goes further, then the potential energy at that point would sharply increase or decrease, respectively. In this case, the electrostatic potential is dominant, and the trajectories of the species are \textbf{strongly} influenced by the interaction with close particles.
+ A plasma with many particles in its Debye length is considered weakly coupled. In this case, the movements of many particles determine the electrostatic potential at each point in space. This means that whether one particle leaves or enters the area of influence does not impact the overall field much. Only the behaviour of the plasma at large matters since the individual particles only \textbf{weakly} impact each other. As a result, the trajectories of the species are, in fact, determined mostly by the kinetic energy of the particles.\cite{giovanni_lapenta_introduction_nodate}
+\newline
+A final characteristic is the plasma frequency, $\omega_{pe}$. It describes the frequency of plasma oscillations or Langmuir waves created when a cloud of electrons is displaced from its equilibrium position. Neglecting the influence of temperature and assuming immobile ions, it can be written as
+ \[\omega_{pe} = \left(\frac{n_e q_e^2}{m_e\epsilon_0}\right)^{\frac{1}{2}}\]
+ where $n_e$ is the density of electrons, $q_e$ is the charge and $m_e$ is the mass of an electron. The Langmuir waves are among the waves with the highest frequency and indicate how fast a plasma will react to disturbances.\cite{giovanni_lapenta_introduction_nodate}
+
+\subsection{Time evolution approaches}
+\label{subsec: plasma approaches}
+Three different ways of calculating the state and evolution of plasma are described: the kinetic, fluid and particle-in-cell approaches. The kinetic description is very powerful at describing the evolution at the microscopic level. It gives a statistical view of the distribution of positions and velocities of the particles in the plasma. The Boltzmann equation states how this distribution can change in time due to external forces, diffusion and internal collisions:
+\[\diff{f(\textbf{x}(t), \textbf{v}(t),t))}{t} =\left(\diff{f}{t}\right)_{\mathrm{force}}+\left(\diff{f}{t}\right)_{\mathrm{diff}}+ \left(\diff{f}{t}\right)_{\mathrm{coll}}\]
+Where $\textbf{v}(t)$ and $\textbf{x}(t)$ represent the velocity and position at time $t$, respectively.
+$f(\textbf{x}(t), \textbf{v}(t),t))$ is the statistical distribution function of the plasma and has the property that $\int f(\textbf{x}(t),\textbf{v}(t),t)d\textbf{v} = n(\textbf{x}(t),t)$ where $n(\textbf{x}(t),t)$ is the density of the plasma in a box with sides of length $d\textbf{x}$ around $\textbf{x}(t)$. Using Liouville's theorem, however, it can be reduced to:\[\diff{f(\textbf{x}(t), \textbf{v}(t),t))}{t} = \left(\diff{f}{t}\right)_{\mathrm{coll}}\]
+Using Newton's laws of motion and expanding the derivative with forces from both gravity and the electromagnetic field gives:
+\[\diffp{f}{t} + \textbf{v} \diffp{f}{{\textbf{x}}} + \left( \frac{\textbf{F}}{m} + \frac{q}{m}(\textbf{E} + \textbf{v} \times \textbf{B})\right)\diffp{f}{{\textbf{v}}}= \left(\diff{f}{t}\right)_{\mathrm{coll}}\]
+ $q$ represents the charge and $m$ the mass of the species in question.
+While this notation leads to accurate simulations at small scales, it can be prohibitively computationally expensive. Especially finding the $\left(\diff{f}{t}\right)_{\mathrm{coll}}$ term can require extensive knowledge about the problem. The latter problem is less of an issue in very weakly coupled systems since, in this case, the collision term can be set to 0, leading to the Vlasov equation.
+\newline The fluid approach seeks instead to describe the macroscopic behaviour of the plasma in terms of wave dynamics. The general form of the wave equation can be written as \[\psi(x,t) = \tilde{\psi}e^{-i\omega t + i k x}\] where $\psi$ is the desired quantity, k the wave number and $\omega$ the angular velocity, need to be found.
+\newline
+Although this representation is less computationally expensive, certain electrostatic phenomena can only be simulated by considering the evolution at a small scale \cite{biskamp_magnetic_2000}. Therefore, a simulation strategy must be found to simulate these large-scale phenomena while not explicitly resolving the small time scales. This can be done using the (semi-)implicit particle-in-cell, PIC, family of methods. \cite{giovanni_lapenta_introduction_nodate}
+\color{black}
+
+
+\section{Differential Equations}
+\label{sec: DE}
+The equations that describe the dynamics of plasma are called differential equations. These are equations that describe the dynamics of a certain metric of interest compared to the evolution of another metric, often time or space. When the variable is only dependent on one metric, it is called an ordinary differential equation, ODE. A generalised ODE in function of $t$ can be written as 
+\begin{equation}
+\label{eq: ODE}
+    \frac{d \textbf{U}(t)}{d t} = \textbf{f}(\textbf{U}(t),t) \quad \text{with} \quad \textbf{U}(0) = \textbf{U}_0
+    \end{equation}
+where $\textbf{U}(t) \in \mathbb{R}^n$ is an n-dimensional state vector and $\textbf{f}(\textbf{U}(t), t)$ is an m-dimensional system of equations. Systems with higher-order derivatives can be transformed into a larger system with only first-order derivatives. For example the second-order differential equation
+\begin{equation*}
+    \frac{d^2 \textbf{x}(t)}{d t^2} = \textbf{a}(\textbf{x}(t),t) \quad \text{with} \quad \textbf{x}(0) = \textbf{x}_0, \quad \frac{d \textbf{x}(0)}{d t} = \textbf{v}_0
+\end{equation*}
+can be transformed into
+\begin{equation*}
+    \left\{ \begin{aligned} 
+      \frac{d \textbf{x}(t)}{d t} &= \textbf{v}(t) \\
+      \frac{d \textbf{v}(t)}{d t} &= \textbf{a}(\textbf{x}(t),t)
+    \end{aligned} \right.
+    \quad \text{with} \quad \textbf{x}(0) = \textbf{x}_0, \quad \textbf{v}(0) = \textbf{v}_0
+\end{equation*}
+where $\textbf{U}(t) = (\textbf{x}(t), \textbf{v}(t))$.
+
+In an even more general case, the variable of interest can depend on multiple parameters and only partial derivatives are given to each. An example is the diffusion equation
+\begin{equation}
+\label{eq: general diffusion}
+    \frac{\partial \textbf{U}(\textbf{x},t)}{\partial t} = \nabla \cdot (a(\textbf{U}(\textbf{x},t),\textbf{x}) \nabla \textbf{U}(\textbf{x},t))
+    \end{equation}
+\color{red} Explain difference hyperbolic and parabolic systems \color{black}
+Since these equations occur frequently when describing systems, much research has been performed on them. While some can be solved analytically, the larger part must be solved using numerical methods. 
+Assume an ODE, depending on time, needs to be simulated from [0, T]. These methods traditionally divide the requested parameter range into $N + 1$ chunks, $0 = t_0 < t_1 < t_2 < \hdots < t_{N} = T$. It is then assumed that the functions $\textbf{f}(\textbf{U}(t),t)$ remain constant over these smaller parameter ranges. The smaller these steps are, the more they should approximate the continuous solution. The relation between finer steps and a more accurate solution is rarely one-to-one, but can often be approximated by a convergence ratio. For example, a convergence of $\mathcal{O}(\Delta t^2)$ indicates that one expects that if the distance between $t_i$ and $t_{i+1}$, $\Delta t$, is halved then the error compared to the actual solution is multiplied by $\frac{1}{2}^2$. The exponent in the convergence bound is used to classify the method, e.g. second-order accuracy. 
+In general, the solution at a time step $n$ can be written as
+\[
+\textbf{U}_n = \sum_{i=0}^N a_i g(\textbf{U}_i,t_i)
+\]
+Two main distinctions can be made based on which time points are needed for a method. Explicit methods only require previous time steps, meaning $i < n$. Implicit methods require solutions at later points in time. They both have their respective use cases. Explicit methods are, in general, faster than their implicit counterparts, but some can become unstable when large timesteps are used. Implicit methods on the other hand need to perform an iteration scheme to obtain their solution, but their solution will remain stable for any chosen timestep.
+ 
+
+
+\section{Goals and Approach}
+\label{sec: goals and approach}
+The main goal of this thesis is an efficient implementation of a PIC method on a massively parallel computer system. Plasma simulations calculated using this method should have good energy-conserving properties. First, a PIC method will be selected, which incorporates the energy-conserving property. 
+Since much research has already been done on the parallelization in space for PIC methods, this work will focus on time parallelism. Different parallel-in-time methods will be investigated to choose a suitable algorithm. The PIC and PinT methods will then be combined and investigated to improve performance and energy-conserving properties.
+
+
+%%% Local Variables: 
+%%% mode: latex
+%%% TeX-master: "thesis"
+%%% End: 

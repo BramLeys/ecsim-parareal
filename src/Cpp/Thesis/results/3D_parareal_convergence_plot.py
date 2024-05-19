@@ -17,20 +17,20 @@ good_conv = data[:,2]
 
 # Plots
 
-fig = plt.figure(figsize = (12, 5), dpi = 300)
+fig = plt.figure(figsize = (8,6), dpi = 300)
 
 plt.semilogy(its, bad_conv, marker='o', color='blue', markersize = 10, label=r"$N_x = 5000$")
 plt.semilogy(its, good_conv, marker='^', color='red', markersize = 10, label=r"$N_x = 512$")
-plt.ylabel("State Change", fontsize = 16, color = "blue")
-plt.tick_params(axis = 'both', which = 'major', labelsize = 14)
-plt.yticks(color = "blue")
-plt.xlabel("Iteration", fontsize = 16)
-plt.legend(loc='best', bbox_to_anchor=(0.65, 0., 0.35, 0.35), framealpha=1)
+plt.ylabel("Parareal error", fontsize = 20)
+plt.tick_params(axis = 'both', which = 'major', labelsize = 20)
+plt.xlabel("Iteration", fontsize = 20)
+plt.legend(loc='lower left',  framealpha=1, fontsize=20)
 # plt.legend(ncol = 3)
-plt.title(r"Parareal convergence of CASE IV using ECSIM")
+plt.title(r"Parareal convergence of CASE IV using ECSIM", fontsize=25)
 
 # saving
 
 fig.tight_layout(rect = [0.0, 0.0, 1.0, 1.0])
-plt.savefig("./3D_parareal_Convergence.png")
+plt.savefig("./figures/eps/3D_parareal_Convergence.eps")
+plt.savefig("./figures/png/3D_parareal_Convergence.png")
 

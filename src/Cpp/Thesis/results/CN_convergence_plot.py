@@ -1,9 +1,12 @@
 
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib import rc
+
+rc('text', usetex=True)
 
 # Data loading and selection
-filename = "./cn_convergence_errors.txt"
+filename = "../../../../paper/Results/cn_convergence_errors.txt"
 data = np.loadtxt(filename)
 
 ts = data[:,0]
@@ -13,25 +16,25 @@ err_ser = data[:,2]
 max_err = np.max(data[:,1:])
 
 # guides
-second_order = ts**2* ts[0]**2/max_err
+second_order = ts**2
 
 # Plots
 
 fig = plt.figure(figsize = (12, 5), dpi = 300)
 
+plt.loglog(ts, err_ser, marker='^', color='red', markersize = 15, label="Serial")
 plt.loglog(ts, err_para, marker='o', color='blue', markersize = 10, label="Parareal")
-plt.loglog(ts, err_ser, marker='x', color='red', markersize = 15, label="Serial")
 plt.loglog(ts, second_order, linestyle="dashed", color="black",markersize = 10, label =r"$\mathcal{O}(\Delta t^2)$")
-plt.ylabel("Error", fontsize = 16, color = "blue")
+plt.ylabel("Error", fontsize = 20)
 plt.tick_params(axis = 'both', which = 'major', labelsize = 14)
-plt.yticks(color = "blue")
-plt.xlabel(r"Timestep size", fontsize = 16)
+plt.xlabel(r"Timestep size", fontsize = 20)
 # fig.legend(bbox_to_anchor = (0.95, 0.999), ncol = 3, prop = {'size': 18})
-plt.legend()
-plt.title(r"Convergence of CASE II using CN")
+plt.legend(fontsize=20)
+plt.title(r"Convergence of CASE I using CN",fontsize=25)
 
 # saving
 
 fig.tight_layout(rect = [0.0, 0.0, 1.0, 1.0])
-plt.savefig("./CNConvergence.png")
+plt.savefig("./figures/eps/CNConvergence.eps")
+plt.savefig("./figures/png/CNConvergence.png")
 

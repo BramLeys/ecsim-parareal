@@ -93,7 +93,7 @@ private:
 	//SparseLU<SparseMatrix<double>> solver;
 
 public:
-	CrankNicolson(const SparseMatrix<double>& A, double dt, double tol=1e-10)
+	CrankNicolson(const SparseMatrix<double>& A, double dt, double tol=1e-12)
 		:A(A), dt(dt)
 	{
 		SparseMatrix<double> I(A.rows(), A.cols());

@@ -10,6 +10,7 @@
 #include <unsupported/Eigen/IterativeSolvers>
 using namespace Eigen;
 namespace TestProblems {
+
     // 1D-3V
     int SetTransverse(ArrayXd& xp, Array3Xd& vp, Array3Xd& E0, Array3Xd& Bc, ArrayXd& qp, int Nx = 128, int Np = 10000, double L = 2 * EIGEN_PI) {
         double dx = L / Nx; 
@@ -120,53 +121,33 @@ namespace TestProblems {
     }
 
     // 1D-1V
-    int SetLandauDamping(ArrayXd& xp, ArrayXd& vp, ArrayXd& E0, ArrayXd& Bc, ArrayXd& qp, int Nx = 128, int Np = 10000, double L = 2 * EIGEN_PI) {
+    int SetConvergence(ArrayXd& xp, ArrayXd& vp, ArrayXd& E0, ArrayXd& Bc, ArrayXd& qp, int Nx = 128, int Np = 10000, double L = 2 * EIGEN_PI) {
+        double V0 = 0.1;
+        double V1 = 0.1 * V0;
+        double mode = 5;
+        xp = ArrayXd::LinSpaced(Np, 0, L - L / Np);
+        vp = V1 * (xp * 2 * EIGEN_PI / L * mode).sin();
+        E0 = (3 * ArrayXd::LinSpaced(Nx, 0, L - L / Nx)).cos();
+        Bc = ArrayXd::Zero(Nx);
+        qp = -L * ArrayXd::Ones(Np);
+        return 0;
+    }
+
+    // 1D-3V
+    int SetConvergence(ArrayXd& xp, Array3Xd& vp, Array3Xd& E0, Array3Xd& Bc, ArrayXd& qp, int Nx = 128, int Np = 10000, double L = 2 * EIGEN_PI) {
         double dx = L / Nx;
         double Vx = pow(L / Np, 1);
-        ArrayXd ux = ArrayXd::Random(Np);
-        ArrayXd uv = ArrayXd::Random(Np);
-        double alpha = 0.4;
-        int k = 1;
-
-        #pragma omp parallel for 
-        for (int i = 0; i < Np; i++) {
-            vp(i) = sqrt(2) * erfinv((2 * k * uv(i)) / (alpha * sin(k * L) + k * L));
-        }
-        xp = ((2 * EIGEN_PI * k * (alpha * sin(L * k) + L * k) * ux / (alpha * vp)) - 1 / alpha).acos() / k; // Error: acos only works on [-1,1]
-        E0 = ArrayXd::Zero(Nx);//initialization of electric field in each of the grid cells
-        Bc = ArrayXd::Ones(Nx) / 10;
-
-        ArrayXi ix = (xp / dx).floor().cast<int>(); // cell of the particle, first cell is cell 0, first node is 0 last node Nx
-        ArrayXd frac1 = 1 - (xp / dx - ix.cast<double>()); // W_{pg}
-        ArrayXi ix2 = mod((ix + 1), Nx).cast<int>(); // second cell of influence due to extended local support of first order b-spline
-
-        std::vector<Triplet<double>> tripletList(Np * 4);
-#pragma omp parallel for shared(tripletList)
-        for (int ip = 0; ip < Np; ip++) {
-            tripletList[ip * 4] = Triplet<double>(ix(ip), ix(ip), pow(frac1(ip), 2));
-            tripletList[ip * 4 + 1] = Triplet<double>(ix2(ip), ix(ip), frac1(ip) * (1 - frac1(ip)));
-            tripletList[ip * 4 + 2] = Triplet<double>(ix(ip), ix2(ip), frac1(ip) * (1 - frac1(ip)));
-            tripletList[ip * 4 + 3] = Triplet<double>(ix2(ip), ix2(ip), pow((1 - frac1(ip)), 2));
-        }
-        SparseMatrix<double> M(Nx, Nx);
-        M.setFromTriplets(tripletList.begin(), tripletList.end());
-
-        VectorXd rhotarget = -VectorXd::Ones(Nx) * Vx;
-        SimplicialLDLT<SparseMatrix<double>> solver;
-        solver.compute(M);
-        if (solver.info() != Success) {
-            // decomposition failed
-            std::cerr << "Decomposition failed" << std::endl;
-            return 1;
-        }
-        auto rhotildeV = solver.solve(rhotarget);
-        if (solver.info() != Success) {
-            // solving failed
-            std::cerr << "Solving failed" << std::endl;
-            return 1;
-        }
-
-        qp = rhotildeV.array()(ix) * frac1 + rhotildeV.array()(ix2) * (1 - frac1);
+        double V1 = 0.1;
+        double mode = 5;
+        xp = ArrayXd::LinSpaced(Np, 0, L - L / Np);
+        vp.row(0) = V1 * (xp * 2 * EIGEN_PI / L * mode).sin();
+        vp.row(1) = V1 * (xp * 2 * EIGEN_PI / L * (mode+1)).sin();
+        vp.row(2) = V1 * (xp * 2 * EIGEN_PI / L * (mode + 2)).sin();
+        E0.row(0) = (3 * ArrayXd::LinSpaced(Nx, 0, L - L / Nx).cos());
+        E0.row(1) = (4 * ArrayXd::LinSpaced(Nx, 0, L - L / Nx).cos());
+        E0.row(2) = (2 * ArrayXd::LinSpaced(Nx, 0, L - L / Nx).cos());
+        Bc = Array3Xd::Ones(3,Nx);
+        qp = -L * ArrayXd::Ones(Np);
         return 0;
     }
 }
@@ -286,10 +267,10 @@ public:
     void Solve(const Eigen::Ref<const MatrixXd> xn, double t0, double t1, Eigen::Ref<MatrixXd> yn) const {
         yn.col(0) = xn;
 
-        ArrayXd x_view = yn.col(0).head(this->Np);
-        ArrayXd vp = yn.col(0).segment(this->Np, this->Np);
-        ArrayXd E0 = yn.col(0).segment(2 * this->Np, this->Nx);
-        ArrayXd Bc = yn.col(0).tail(this->Nx);
+        ArrayXd x_view = xn.col(0).head(this->Np);
+        ArrayXd vp = xn.col(0).segment(this->Np, this->Np);
+        ArrayXd E0 = xn.col(0).segment(2 * this->Np, this->Nx);
+        ArrayXd Bc = xn.col(0).tail(this->Nx);
 
         auto oldE = this->Energy(xn);
 
@@ -439,9 +420,9 @@ public:
 
         for (size_t step = 0; step < yn.cols() - 1; step++) {
             auto tic = std::chrono::high_resolution_clock::now();
-
             B.rightCols(B.cols() - 1) = 0.5 * (Bc.rightCols(B.cols() - 1) + Bc.leftCols(B.cols() - 1));
             B.col(0) = 0.5 * (Bc.col(B.cols() - 1) + Bc.col(0));
+
             //watch(B);
 
             J0.setZero();
@@ -612,10 +593,21 @@ public:
             Bc.row(2) = (xKrylov(seqN(4 * this->Nx, this->Nx)).array() - Bc.row(2).transpose() * (1 - this->theta)) / this->theta;
 
             x_view += vp.row(0) * this->dt;
-            x_view = mod(x_view, this->L);
+            //x_view = mod(x_view, this->L);
+            //B.rightCols(B.cols() - 1) = 0.5 * (Bc.rightCols(B.cols() - 1) + Bc.leftCols(B.cols() - 1));
+            //B.col(0) = 0.5 * (Bc.col(B.cols() - 1) + Bc.col(0));
             
             for (int itsub = 0; itsub < this->Nsub; itsub++) {
                 for (int ip = 0; ip < this->Np; ip++) {
+                    //Bp[itsub].col(ip) = B.col(ix(ip, itsub)) * frac1(ip, itsub) + B.col(ix2(ip, itsub)) * (1 - frac1(ip, itsub));
+                    //double sx = Bp[itsub](0, ip) * beta;
+                    //double sy = Bp[itsub](1, ip) * beta;
+                    //double sz = Bp[itsub](2, ip) * beta;
+
+                    //alphap[itsub * this->Np + ip].col(0) << 1 + sx * sx, -sz + sx * sy, sx* sz + sy;
+                    //alphap[itsub * this->Np + ip].col(1) << sz + sx * sy, 1 + sy * sy, -sx + sy * sz;
+                    //alphap[itsub * this->Np + ip].col(2) << sx * sz - sy, sx + sy * sz, 1 + sz * sz;
+                    //alphap[itsub * this->Np + ip].array() /= 1 + (Bp[itsub].col(ip) * (beta)).pow(2).sum();
                     vp.col(ip) = (2 * alphap[itsub * this->Np + ip] - Matrix3d::Identity()) * vp.col(ip).matrix() + alphap[itsub * this->Np + ip] * this->qom * this->dt / this->Nsub * (Map < Array<double, 3, Dynamic, Eigen::RowMajor>>(xKrylov.data(), 3, this->Nx).col(ix(ip, itsub)) * frac1(ip, itsub) + Map < Array<double, 3, Dynamic, Eigen::RowMajor>>(xKrylov.data(), 3, this->Nx).col(ix2(ip, itsub)) * (1 - frac1(ip, itsub))).matrix();
                 }
             }

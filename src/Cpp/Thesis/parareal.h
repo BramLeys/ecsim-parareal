@@ -24,7 +24,7 @@ public:
 	// T contains all timesteps at which states are found (initial conditions included -> N+1, where N is number of timesteps)
 	// X contains initial condition in first col on entry and full simulation result on exit
 	int Solve(MatrixXd& X, VectorXd& T, MatrixXd* ref=nullptr) {
-		auto Eold = coarse.Energy(X.col(0));
+		//auto Eold = coarse.Energy(X.col(0));
 		// Perform coarse simulation
 		for (Eigen::Index i = 0; i < T.size() - 1; i++) {
 			coarse.Step(X.col(i), T(i), T(i + 1), X.col(i + 1));
@@ -61,7 +61,7 @@ public:
 				if (ref != nullptr) {
 					diffs(k - 1, 2) = std::max(diffs(k - 1, 2), coarse.Error(ref->col(i + 1), X.col(i + 1)).maxCoeff());
 				}
-				diffs(k - 1, 3) = std::max(diffs(k - 1, 3), abs((coarse.Energy(X.col(i + 1)) - Eold).sum()) / abs(Eold.sum()));
+				//diffs(k - 1, 3) = std::max(diffs(k - 1, 3), abs((coarse.Energy(X.col(i + 1)) - Eold).sum()) / abs(Eold.sum()));
 			}
 			//save("Parareal_states_iteration_" + std::to_string(k) + ".txt", X);
 			auto paratoc = std::chrono::high_resolution_clock::now();
