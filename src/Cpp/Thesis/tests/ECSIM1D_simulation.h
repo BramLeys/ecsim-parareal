@@ -11,13 +11,13 @@
 using namespace Eigen;
 
 int ECSIM1D_simulation(int argc, char* argv[]) {
-    int Nx = 5000; // number of grid cells
+    int Nx = 128; // number of grid cells
     double L = 2 * EIGEN_PI; // Size of position space
     int Np = 10000; // number of particles
 
 
     double dt = 0.125;
-    double T = 1;
+    double T = 15;
 
     for (int i = 1; i < argc; ++i) {
         std::string arg = argv[i];

@@ -17,7 +17,7 @@ int ECSIM_convergence3D_test(int argc, char* argv[]) {
     double dt = 1e-2;
     int num_thr = 12;
     double T = 0;
-    int refinements = 5;
+    int refinements = 4;
     double thresh = 1e-8;
 
     for (int i = 1; i < argc; ++i) {
@@ -81,7 +81,7 @@ int ECSIM_convergence3D_test(int argc, char* argv[]) {
     ArrayXXd convergence(refinements, 5);
     VectorXd Yn = VectorXd::Zero(dimension);
     for (int i = 0; i < refinements; i++) {
-        solver.Set_dt(dt / pow(2,i));
+        solver.Set_dt(dt / pow(10,i));
         PRINT("DT = ", solver.Get_dt());
         tic = std::chrono::high_resolution_clock::now();
         solver.Step(Xn, 0, T, Yn);

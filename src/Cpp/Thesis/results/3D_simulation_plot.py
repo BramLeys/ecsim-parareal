@@ -11,7 +11,7 @@ energy = np.loadtxt("../../../../paper/Results/simulation_energy3D.txt")
 
 ### Set parameters
 Np = 10000
-Nx = 5000
+Nx = 128
 
 print(data.shape)
 print(energy.shape)

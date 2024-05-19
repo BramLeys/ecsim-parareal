@@ -2,6 +2,8 @@
 #define ODE_SOLVERS_H
 #include <Eigen/Dense>
 #include <unsupported/Eigen/IterativeSolvers>
+#include <Eigen/Eigenvalues>
+#include "debug.h"
 
 // Eigen is column-major by default
 using namespace Eigen;
@@ -101,6 +103,10 @@ public:
 		solver.setTolerance(tol);
 		solver.setMaxIterations(100);
 		solver.compute(I - dt * 0.5 * A);
+		//Eigen::EigenSolver<Eigen::MatrixXd> eigensolver;
+		//eigensolver.compute((I - dt * 0.5 * A).toDense());
+		//Eigen::VectorXd eigen_values = eigensolver.eigenvalues().real();
+		//PRINT("eigenvalues: ", eigen_values);
 	}
 
 	double Get_dt() const { return dt; }
@@ -109,6 +115,11 @@ public:
 		SparseMatrix<double> I(A.rows(), A.cols());
 		I.setIdentity();
 		solver.compute(I - dt * 0.5 * A);
+		//Eigen::EigenSolver<Eigen::MatrixXd> eigensolver;
+		//eigensolver.compute((I - dt * 0.5 * A).toDense());
+		//Eigen::VectorXd eigen_values = eigensolver.eigenvalues().real();
+		//PRINT("eigenvalues: ", eigen_values);
+
 	}
 
 	inline Eigen::ArrayXd Error(const Eigen::Ref<const MatrixXd> X, const Eigen::Ref<const MatrixXd> Y) const {
