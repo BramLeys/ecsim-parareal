@@ -2,6 +2,7 @@ import re
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import rc
+from matplotlib.ticker import MaxNLocator
 
 rc('text', usetex=True)
 
@@ -25,7 +26,10 @@ speedup = data[:,5]
 fig = plt.figure(figsize = (8,6), dpi = 200)
 
 plt.semilogx(ref, it,marker='o', color='blue', markersize = 10)
-plt.ylabel("Parareal solver (s)", fontsize = 20)
+plt.ylabel("Parareal iterations", fontsize = 20)
+plt.yticks(np.arange(0,20))
+ax = plt.gca()  # Get the current axis
+ax.yaxis.set_major_locator(MaxNLocator(integer=True))
 plt.tick_params(axis = 'both', which = 'major', labelsize = 20)
 plt.xlabel(r"$\Delta t_\mathrm{Coarse}/\Delta t_\mathrm{Fine}$", fontsize = 20)
 plt.title(r"Parareal iterations for $\Delta t_\mathrm{Fine} = 10^{-5}$", fontsize=25)
