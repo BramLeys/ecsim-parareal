@@ -151,7 +151,23 @@ class RK4:
         if return_all_steps:
             x
         return x[-1,:]
-    
+
+class BackwardEuler:
+    def __init__(self,A,dt,thresh=1e-10):
+        self.dt = dt
+        self.A = A
+        self.thresh= thresh
+    def Step(self,yn,tn,tn1,return_all_steps = False):
+        I = np.identity(self.A.shape[0])
+        nb_steps = round(abs((tn1-tn)/self.dt))
+        x = np.empty((nb_steps+1,yn.shape[0]))
+        x[0,:] = yn
+        for i in range(1,nb_steps+1):
+            x[i,:],_ = sp.sparse.linalg.bicgstab(sp.sparse.csr_array(I - self.dt * self.A),x[i-1,:],tol=self.thresh)
+        if return_all_steps:
+            return x
+        return x[-1,:]
+        
 class CrankNicholson:
     def __init__(self,A,dt,thresh=1e-10):
         self.dt = dt

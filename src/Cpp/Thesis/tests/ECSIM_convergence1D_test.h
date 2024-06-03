@@ -45,10 +45,10 @@ int ECSIM_convergence1D_test(int argc, char* argv[]) {
             return 1;
         }
     }
-    T = T == 0 ? 5e-1 : T;
+    T = T == 0 ? num_thr*dt : T;
 
     ArrayXd xp(Np), qp(Np), vp(Np), E0(Nx), Bc(Nx);
-    TestProblems::SetConvergence(xp, vp, E0, Bc, qp, Nx, Np, L);
+    TestProblems::SetTwoStream(xp, vp, E0, Bc, qp, Nx, Np, L);
 
     auto G = ECSIM<1, 1>(L, Np, Nx, 1, dt, qp);
     auto solver = ECSIM<1, 1>(L, Np, Nx, 1, dt / 100, qp);
@@ -63,7 +63,7 @@ int ECSIM_convergence1D_test(int argc, char* argv[]) {
     VectorXd Yn_ref(dimension);
     solver.Set_dt(dt / pow(2, refinements - 1) / 50);
     auto tic = std::chrono::high_resolution_clock::now();
-    solver.Step(Xn, 0, T, Yn_ref);
+    solver.Step(Xn, 0, T, Yn_ref,true);
     auto toc = std::chrono::high_resolution_clock::now();
     double serial_time = std::chrono::duration_cast<std::chrono::milliseconds>(toc - tic).count();
     PRINT("REFERENCE simulation takes", serial_time, "ms");
@@ -82,7 +82,7 @@ int ECSIM_convergence1D_test(int argc, char* argv[]) {
         solver.Set_dt(dt / pow(2, i));
         PRINT("dt = ", solver.Get_dt());
         tic = std::chrono::high_resolution_clock::now();
-        solver.Step(Xn, 0, T, Yn);
+        solver.Step(Xn, 0, T, Yn,true);
         toc = std::chrono::high_resolution_clock::now();
         double time = std::chrono::duration_cast<std::chrono::milliseconds>(toc - tic).count();
         PRINT("Simulation takes", time, "ms");

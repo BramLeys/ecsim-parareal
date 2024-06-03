@@ -7,7 +7,7 @@ import argparse
 
 def parse_arguments():
     parser = argparse.ArgumentParser(description='Parareal convergence test')
-    parser.add_argument('-c', '--coarse_dt', type=float, default=1e-1,
+    parser.add_argument('-c', '--coarse_dt', type=float, default=1e-2,
                         help='Set the value of coarse solver dt (default: 1e-2)')
     parser.add_argument('-tr', '--thresh', type=float, default=1e-8,
                         help='Set the value of threshold (default: 1e-8)')
@@ -41,14 +41,14 @@ NT = (int)(args.T / args.coarse_dt)
 ts = np.linspace(0, args.T,NT + 1)
 refinement = 5
 
-F = Solvers.CrankNicholson(B, args.coarse_dt,thresh=args.thresh/100)
-G = Solvers.CrankNicholson(B, args.coarse_dt, thresh=args.thresh/100)
-ref_solver = Solvers.CrankNicholson(B, args.coarse_dt/pow(2,refinement+3), 1e-15)
+F = Solvers.BackwardEuler(B, args.coarse_dt,thresh=args.thresh/100)
+G = Solvers.BackwardEuler(B, args.coarse_dt, thresh=args.thresh/100)
+ref_solver = Solvers.BackwardEuler(B, args.coarse_dt/pow(2,refinement+3), 1e-15)
 
 parareal_solver = Solvers.PararealSolver(50, F, G, it_threshold=args.thresh)
 
-Xn = np.sin(2*np.linspace(0,L,args.N,endpoint=False)) + 5
-# Xn = np.random.randn(args.N)
+# Xn = np.sin(2*np.linspace(0,L,args.N,endpoint=False)) + 5
+Xn = np.random.randn(args.N)
 X_para= np.empty((args.N, NT + 1))
 Yn_ref = ref_solver.Step(Xn, 0, args.T)
 errors = np.zeros((refinement,3))

@@ -20,19 +20,21 @@ smooth_expensive = data[:,5]
 
 # Plots
 
-fig = plt.figure(figsize = (12, 5), dpi = 300)
+fig, ax = plt.subplots(1,1,figsize = (15, 7), dpi = 300, sharex=True)
 
-plt.semilogy(its, default_random, marker='o', color='blue', markersize = 10, label=r"Random ($\Delta t_G=10^{-2}, N_x=100$)")
-plt.semilogy(its, random_space_fix, marker='H', color='orange', markersize = 15, label=r"Random ($\Delta t_G=10^{-2}, N_x=10$)")
-plt.semilogy(its, random_time_fix, marker='^', color='red', markersize = 10, label=r"Random ($\Delta t_G=10^{-3}, N_x=100$)")
-plt.semilogy(its, smooth, marker='>', color='green', markersize = 10, label=r"Smooth ($\Delta t_G=10^{-2}, N_x=100$)")
-plt.semilogy(its, smooth_expensive, marker='s', color='black', markersize = 10, label=r"Smooth ($\Delta t_G=10^{-2}, N_x=1000$)")
-plt.ylabel("Parareal error", fontsize = 20)
-plt.tick_params(axis = 'both', which = 'major', labelsize = 20)
-plt.xlabel("Iteration", fontsize = 20)
+ax.semilogy(its, random_space_fix, marker='H', color='orange', markersize = 15, label=r"Random ($\Delta t_G=10^{-2}, N_x=10$)")
+ax.semilogy(its, default_random, marker='o', color='blue', markersize = 10, label=r"Random ($\Delta t_G=10^{-2}, N_x=100$)")
+ax.semilogy(its, random_time_fix, marker='^', color='red', markersize = 10, label=r"Random ($\Delta t_G=10^{-3}, N_x=100$)")
+ax.semilogy(its, smooth, marker='>', color='green', markersize = 10, label=r"Smooth ($\Delta t_G=10^{-2}, N_x=100$)")
+ax.semilogy(its, smooth_expensive, marker='s', color='black', markersize = 10, label=r"Smooth ($\Delta t_G=10^{-2}, N_x=1000$)")
+# ax.hlines(10**(-8), 0, np.max(its), linestyle="dashed")
+ax.set_ylabel("Parareal error", fontsize = 20)
+ax.tick_params(axis = 'both', which = 'major', labelsize = 20)
+ax.set_xlabel("Iteration", fontsize = 20)
 # plt.legend(loc='best', bbox_to_anchor=(0.65, 0., 0.35, 0.35), framealpha=1,fontsize=20)
-plt.legend(loc='best', framealpha=1,fontsize=20)
-plt.title(r"Parareal convergence of CASE I using CN",fontsize=25)
+box = ax.get_position()
+ax.set_position([box.x0, box.y0, box.width, box.height*1.2])
+fig.legend(loc='upper center', bbox_to_anchor=(0.5, 1), ncol=3, fontsize=20)
 
 # saving
 

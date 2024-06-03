@@ -27,10 +27,9 @@ plt.loglog(ts, err_para, marker='o', color='blue', markersize = 10, label="Parar
 plt.loglog(ts, second_order, linestyle="dashed", color="black",markersize = 10, label =r"$\mathcal{O}(\Delta t^2)$")
 plt.ylabel("Error", fontsize = 20)
 plt.tick_params(axis = 'both', which = 'major', labelsize = 14)
-plt.xlabel(r"Timestep size", fontsize = 20)
+plt.xlabel(r"Timestep size ($\Delta t$)", fontsize = 20)
 # fig.legend(bbox_to_anchor = (0.95, 0.999), ncol = 3, prop = {'size': 18})
 plt.legend(fontsize=20)
-plt.title(r"Convergence of CASE I using CN",fontsize=25)
 
 # saving
 

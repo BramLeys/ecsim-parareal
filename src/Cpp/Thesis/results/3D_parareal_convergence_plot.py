@@ -26,7 +26,6 @@ plt.tick_params(axis = 'both', which = 'major', labelsize = 20)
 plt.xlabel("Iteration", fontsize = 20)
 plt.legend(loc='lower left',  framealpha=1, fontsize=20)
 # plt.legend(ncol = 3)
-plt.title(r"Parareal convergence of CASE IV using ECSIM", fontsize=25)
 
 # saving
 

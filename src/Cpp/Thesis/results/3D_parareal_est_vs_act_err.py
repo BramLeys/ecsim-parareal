@@ -26,7 +26,6 @@ plt.tick_params(axis = 'both', which = 'major', labelsize = 20)
 plt.xticks(range(1,its.shape[0]+1))
 plt.xlabel("Iteration", fontsize = 20)
 plt.legend( fontsize = 20)
-plt.title(r"State variable error during parareal", fontsize = 23)
 
 # saving
 

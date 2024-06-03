@@ -17,7 +17,7 @@ int ECSIM_convergence3D_test(int argc, char* argv[]) {
     double dt = 1e-2;
     int num_thr = 12;
     double T = 0;
-    int refinements = 4;
+    int refinements = 5;
     double thresh = 1e-8;
 
     for (int i = 1; i < argc; ++i) {
@@ -45,12 +45,12 @@ int ECSIM_convergence3D_test(int argc, char* argv[]) {
             return 1;
         }
     }
-    T = T == 0 ? 5e-2 : T;
+    T = T == 0 ? num_thr*dt : T;
 
     ArrayXd xp(Np), qp(Np);
     Array3Xd vp(3, Np), E0(3, Nx), Bc(3, Nx);
 
-    TestProblems::SetConvergence(xp, vp, E0, Bc, qp, Nx, Np, L);
+    TestProblems::SetTransverse(xp, vp, E0, Bc, qp, Nx, Np, L);
 
     auto G = ECSIM<1, 3>(L, Np, Nx, 1, dt, qp);
     auto solver = ECSIM<1, 3>(L, Np, Nx, 1, dt/100, qp);
@@ -65,7 +65,7 @@ int ECSIM_convergence3D_test(int argc, char* argv[]) {
     VectorXd Yn_ref(dimension);
     solver.Set_dt(dt / pow(2, refinements-1)/50);
     auto tic = std::chrono::high_resolution_clock::now();
-    solver.Step(Xn, 0, T, Yn_ref);
+    solver.Step(Xn, 0, T, Yn_ref, true);
     auto toc = std::chrono::high_resolution_clock::now();
     double serial_time = std::chrono::duration_cast<std::chrono::milliseconds>(toc - tic).count();
     PRINT("REFERENCE simulation takes", serial_time, "ms");
@@ -81,10 +81,10 @@ int ECSIM_convergence3D_test(int argc, char* argv[]) {
     ArrayXXd convergence(refinements, 5);
     VectorXd Yn = VectorXd::Zero(dimension);
     for (int i = 0; i < refinements; i++) {
-        solver.Set_dt(dt / pow(10,i));
+        solver.Set_dt(dt / pow(2,i));
         PRINT("DT = ", solver.Get_dt());
         tic = std::chrono::high_resolution_clock::now();
-        solver.Step(Xn, 0, T, Yn);
+        solver.Step(Xn, 0, T, Yn, true);
         toc = std::chrono::high_resolution_clock::now();
         double time = std::chrono::duration_cast<std::chrono::milliseconds>(toc - tic).count();
         PRINT("Simulation takes", time, "ms");

@@ -255,10 +255,16 @@ public:
     using ECSIMBase<xdim, 1>::ECSIMBase;
 
     // yn is a 1D array and will only contain the state at t1
-    inline void Step(const Eigen::Ref<const MatrixXd> xn, double t0, double t1, Eigen::Ref<MatrixXd> yn) const {
+    inline void Step(const Eigen::Ref<const MatrixXd> xn, double t0, double t1, Eigen::Ref<MatrixXd> yn, bool adjust_init = false) const {
         int nb_steps = round(abs(t1 - t0) / this->dt);
         MatrixXd steps(yn.rows(), nb_steps + 1);
-        Solve(xn, t0, t1, steps);
+        VectorXd x0 = xn;
+        // The actual initial position should be half of a timestep before t0 -> adjust if necessary
+        if (adjust_init) {
+            Eigen::Map <const Array<double, 1, -1>> vp(x0.data() + xdim * this->Np, 1, this->Np);
+            x0 << x0.head(xdim*this->Np).array() - vp.row(0).array() * this->dt / 2, x0.tail(x0.rows() - xdim*this->Np);
+        }
+        Solve(x0, t0, t1, steps);
         yn = steps.col(nb_steps);
         return;
     }
@@ -353,10 +359,16 @@ public:
     using ECSIMBase<xdim, 3>::ECSIMBase;
 
     //yn is a 1D array and will only contain the state at t1
-    inline void Step(const Eigen::Ref<const MatrixXd> xn, double t0, double t1, Eigen::Ref<MatrixXd> yn) const {
+    inline void Step(const Eigen::Ref<const MatrixXd> xn, double t0, double t1, Eigen::Ref<MatrixXd> yn, bool adjust_init = false) const {
         int nb_steps = round(abs(t1 - t0) / this->dt);
         MatrixXd steps(yn.rows(), nb_steps + 1);
-        Solve(xn, t0, t1, steps);
+        VectorXd x0 = xn;
+        // The actual initial position should be half of a timestep before t0 -> adjust if necessary
+        if (adjust_init) {
+            Eigen::Map <const Array<double, 3, -1>> vp(x0.data() + xdim * this->Np, 3, this->Np);
+            x0 << x0.head(this->Np).array() - vp.row(0).array() * this->dt / 2, x0.tail(x0.rows() - this->Np);
+        }
+        Solve(x0, t0, t1, steps);
         yn = steps.col(nb_steps);
         return;
     }
