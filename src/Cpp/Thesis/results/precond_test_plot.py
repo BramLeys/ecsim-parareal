@@ -27,11 +27,12 @@ plt.loglog(ts, lu/1000,marker='^', color='green', markersize = 10, label="Incomp
 plt.ylabel("Time (s)", fontsize = 20)
 plt.tick_params(axis = 'both', which = 'major', labelsize = 16)
 plt.xlabel(r"Time step size", fontsize = 20)
-plt.title("Computational runtime", fontsize = 25)
+# plt.title("Computational runtime", fontsize = 25)
 plt.legend( fontsize = 18)
 
 # saving
 
 fig.tight_layout(rect = [0.0, 0.0, 1.0, 1.0])
-plt.savefig("./precond_test.png")
+plt.savefig("./figures/eps/precond_test.eps")
+plt.savefig("./figures/png/precond_test.png")
 

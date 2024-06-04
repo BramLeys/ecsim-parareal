@@ -31,7 +31,7 @@ ax1.bar(np.arange(len(solvers)) + 0.25, speedup[2, :], 0.25, label='Coarse BiCGS
 # Add some text for labels, title, and custom x-axis tick labels, etc.
 ax1.set_xlabel('Fine Solver', fontsize=20)
 ax1.set_ylabel('Speedup', fontsize=20)
-ax1.set_title('Speedup for different linear solvers', fontsize=20)
+# ax1.set_title('Speedup for different linear solvers', fontsize=20)
 ax1.tick_params(axis='both', which='major', labelsize=20)
 ax1.set_xticks(np.arange(len(solvers)))
 ax1.set_xticklabels(solvers)
@@ -46,7 +46,7 @@ ax2.bar(np.arange(len(solvers)) + 0.25, parallel_timings[2, :] / 1000, 0.25)
 # Add some text for labels, title, and custom x-axis tick labels, etc.
 ax2.set_xlabel('Fine Solver', fontsize=20)
 ax2.set_ylabel('Time (s)', fontsize=20)
-ax2.set_title('Computational runtime', fontsize=20)
+# ax2.set_title('Computational runtime', fontsize=20)
 ax2.tick_params(axis='both', which='major', labelsize=20)
 ax2.set_xticks(np.arange(len(solvers)))
 ax2.set_xticklabels(solvers)
@@ -61,5 +61,6 @@ fig.legend(loc='upper center', bbox_to_anchor=(0.5, 1), ncol=3, fontsize=20)
 # saving
 
 plt.tight_layout()
-plt.savefig("./solver_test.eps")
+plt.savefig("./figures/eps/solver_test.eps")
+plt.savefig("./figures/png/solver_test.png")
 

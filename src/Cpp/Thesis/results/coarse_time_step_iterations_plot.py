@@ -32,7 +32,7 @@ ax = plt.gca()  # Get the current axis
 ax.yaxis.set_major_locator(MaxNLocator(integer=True))
 plt.tick_params(axis = 'both', which = 'major', labelsize = 20)
 plt.xlabel(r"$\Delta t_\mathrm{Coarse}/\Delta t_\mathrm{Fine}$", fontsize = 20)
-plt.title(r"Parareal iterations for $\Delta t_\mathrm{Fine} = 10^{-5}$", fontsize=25)
+# plt.title(r"Parareal iterations for $\Delta t_\mathrm{Fine} = 10^{-5}$", fontsize=25)
 
 
 

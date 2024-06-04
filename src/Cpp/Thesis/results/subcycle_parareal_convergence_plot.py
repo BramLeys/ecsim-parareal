@@ -26,10 +26,11 @@ for i in range(data.shape[0]):
 plt.ylabel("Parareal error", fontsize = 20)
 plt.tick_params(axis = 'both', which = 'major', labelsize = 20)
 plt.xlabel(r"Parareal iteration", fontsize = 20)
-plt.title("Convergence of parareal using subcycling", fontsize=25)
+# plt.title("Convergence of parareal using subcycling", fontsize=25)
 plt.legend(fontsize=20)
 
 # save fig
 
 fig.tight_layout(rect = [0.0, 0.0, 1.0, 1.0])
-plt.savefig("./subcycle_parareal_convergence.png")
+plt.savefig("./figures/eps/subcycle_parareal_convergence.eps")
+plt.savefig("./figures/png/subcycle_parareal_convergence.png")

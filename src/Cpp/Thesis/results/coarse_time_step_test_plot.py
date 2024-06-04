@@ -22,9 +22,9 @@ speedup = data[:,5]
 
 # Plot
 
-fig = plt.figure(figsize = (12, 5), dpi = 200)
+fig = plt.figure(figsize = (8, 6), dpi = 200)
 
-plt.subplot(1, 2, 1)
+# plt.subplot(1, 2, 1)
 plt.semilogx(ref, time_par/1000,marker='o', color='blue', markersize = 10)
 plt.ylabel("Parareal solver (s)", fontsize = 20, color = "blue")
 plt.tick_params(axis = 'both', which = 'major', labelsize = 20)
@@ -38,20 +38,25 @@ ax2.set_ylabel("Serial solver (s)", fontsize = 20, color = "red")
 ax2.semilogx(ref, time_ser/1000, marker='d', color='red', markersize = 10)
 plt.tick_params(axis = 'y', which = 'major', labelsize = 20, color = "red")
 plt.yticks(color = "red")
-plt.title("Computational runtime", fontsize=25)
+# plt.title("Computational runtime", fontsize=25)
+fig.tight_layout(rect = [0.0, 0.0, 1.0, 1.0])
+plt.savefig("./figures/eps/time_step_constant_fine_time.eps")
+plt.savefig("./figures/png/time_step_constant_fine_time.png")
 
-
-bound = 1/it * 96
-plt.subplot(1, 2, 2)
+fig = plt.figure(figsize = (8, 6), dpi = 200)
+p = 96
+bound = 1/(it*(1/p + (1/it + 1)/ref))
+# plt.subplot(1, 2, 2)
 plt.semilogx(ref, speedup, marker='H', color='black', markersize = 10, label="Speedup")
 plt.semilogx(ref, bound, linestyle="dashed", color='red', markersize = 10, label="Theoretical bound")
 plt.tick_params(axis = 'both', which = 'major', labelsize = 20)
 plt.xlabel(r"$\Delta t_\mathrm{Coarse}/\Delta t_\mathrm{Fine}$", fontsize = 20)
 plt.ylabel("Speedup (with parareal)", fontsize = 20)
-plt.title("Speedup", fontsize=25)
+# plt.title("Speedup", fontsize=25)
 plt.legend(fontsize=20)
 
 # save fig
 
 fig.tight_layout(rect = [0.0, 0.0, 1.0, 1.0])
-plt.savefig("./time_step_constant_fine.eps")
+plt.savefig("./figures/eps/time_step_constant_fine_single_speedup.eps")
+plt.savefig("./figures/png/time_step_constant_fine_single_speedup.png")
