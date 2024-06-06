@@ -1,0 +1,128 @@
+\chapter{Parareal Solvers for Particle-in-Cell Simulations: Parallel Performance}
+\label{cha: speedup}
+
+%%% ============================================================================================ %%% 
+In this chapter, we use the test cases and methods described in Chapter \ref{cha: methodology} to investigate the computational runtime and speedup for different parameters by changing the coarse and fine propagators. 
+ The following parameter studies are considered: 
+ \begin{itemize}
+ 
+    \item Temporal coarsening
+    
+    \item Scaling tests on shared-memory architecture
+    
+    \item Linear solvers (used during ECSIM)
+ 
+ \end{itemize}
+A spatial coarsening test was also considered (Appendix \ref{app: spatial coarsening}). However, elementary tests revealed that studying the efficacy of spatial coarsening would require a comprehensive analysis with various high-order polynomial interpolation methods, which is beyond this project's scope. 
+
+\section{Temporal Coarsening}
+The choice of fine and coarse integrators for parareal can massively influence the algorithm's performance. It is thus crucial to decide on a good combination. In this section, we consider reducing complexity by changing parameters related to the time domain.
+\subsection{Time step size}
+ It is well-known that using smaller time step sizes in ODE solvers results in more accurate solutions than larger sizes. Using the same integrator method for both the coarse and fine solver while employing a large time step size for the coarse solver and a smaller step size for the fine solver thus constitutes a natural choice for a parareal implementation. The coarse solver is expected to yield a ``rougher'' solution estimate at every coarse time point compared to the fine solver. Suppose $r$ fine time steps are computed for each coarse time step, using an ODE solver of order $l$. In this case, the error incurred by the fine integrator is expected to be a factor $\mathcal{O}(n^r)$ smaller than the coarse approximation. 
+This choice of fine and coarse solver also allows for easy comparisons in terms of computational complexity between the fine and coarse. If the fine solver performs $100$ steps for each coarse step, one would expect that the fine integrator is $100$ times slower than the coarse solver.
+
+To define the fine and coarse time step sizes, we fix one and calculate the other based on the chosen ratio $r$. We now show how this factor influences the performance of parareal by plotting the speedup for increasing $r$.
+
+The first experiment chooses the coarse step size as a constant and reduces the fine size. Although this allows us to show speedup results approaching the theoretical limit from \ref{eq: speedup}, it is practically less valuable. In a typical use case, a certain accuracy is desired over the simulation time period. Since parareal will approach the accuracy of the fine solver, the fine integrator should reach the desired accuracy. This means the fine time step size is connected to the desired accuracy, and as such, it does not make sense to go to much smaller step sizes, even if the speedup would be better. Decreasing the fine time step size still increases the computational runtime of the parareal algorithm, the higher speedup only indicates that it rises less steeply than the runtime of the serial solution. Therefore, it is also informative to show how the speedup and computational runtimes change when the fine time step size is fixed. This plot can be used to choose the best coarse integrator step size for a given fine step size.
+
+Figure \ref{fig: temporal-coarsening} shows the computational runtime (left) and speedup (right) obtained when choosing either a fixed coarse time step size (top) or fine step size (bottom). All experiments use 96 cores of one node on the VSC and have 512 grid cells for spatial discretisation. The top graphs use a fixed coarse time step size, $\Delta t_\mathrm{Coarse} = 10^{-3}$, while the bottom plots use a constant fine step size $\Delta t_\mathrm{Fine} = 10^{-5}$. 
+
+In the top plots, as stated before, the computational runtime increases as the factor between fine and coarse time step sizes increases. Confirming that needlessly increasing the accuracy of the fine solver is not advised. Note that the scales on the serial and parareal solver axes differ, where the serial solve is more expensive than the parareal solution. 
+The top right graph shows that making the fine solver more expensive helps attain higher speedup. This means it is beneficial to perform parareal when a very fine discretisation is desired. This upward motion is only warranted by the assumption that the number of needed parareal iterations remains the same, which is always $3$ in the tested results (except when $\frac{\Delta t_\mathrm{Coarse}}{\Delta t_\mathrm{Fine}}=1$). This is shown by the theoretical bound shown in the figure, which approximates the speedup equation \ref{eq: speedup} with the ratio between the used number of cores to the number of required parareal iterations, $\frac{p}{k} = 48$. The required number of iterations likely remains the same due to the coarse timestep already being very small to account for the CFL conditions of the ECSIM algorithm. This allows parareal to converge quickly. Note that the speedup graph seems to approach the theoretical bound as $\frac{\Delta t_\mathrm{Coarse}}{\Delta t_\mathrm{Fine}}$ increases, validating the conclusions of equation \ref{eq: speedup}. A speedup of $27$ is achieved for a factor of $512$.
+
+The bottom graphs of Figure \ref{fig: temporal-coarsening} show the results of keeping the fine time step size constant while increasing the step size of the coarse integrator. To obtain comparable results for the speedup of the test with constant fine solver step size, the time frame was always chosen to be equal to $96\cdot\Delta t_\mathrm{Coarse}$. This explains why the computational runtime of the serial solver increases in the bottom left plot. This measure ensures the parallel section can always appoint exactly one core per coarse time step, putting more emphasis on the parallel aspect of the parareal algorithm. In the bottom right figure, it can be seen that, as the number of coarse time steps increases, the speedup obtained increases to a certain point before it plummets. This may be explained as follows: choosing a very cheap solver reduces serial computational time, thereby speeding up the simulations. However, the cheap coarse solver may not yield reasonably accurate solutions, necessitating additional parareal iterations that can negate the computational gains obtained from choosing a cheap coarse solve. The theoretical bound shows that the number of iterations needed by parareal decreases as the coarse and fine time step sizes get closer. We obtain the largest speedup in this scenario for a $\Delta t_G/\Delta t_F = 128$. 
+Here, the approximation of the coarse solver is accurate enough for the parareal algorithm to converge within a reasonable number of iterations without incurring significant overhead. Further reductions in the coarse time step size seem to be counter-productive. Although they decrease the number of iterations, the added cost is too large.
+
+ \begin{figure}[h]
+    \centering
+    \includegraphics[width=1\linewidth]{figures/png/time_step_constant_coarse.png}
+    \includegraphics[width=1\linewidth]{figures/png/time_step_constant_fine.png}
+    \caption{Computational runtime and speedup of parareal using temporal coarsening during the simulation of the transverse stream instability.}
+    \label{fig: temporal-coarsening}
+\end{figure}
+For the fixed $\Delta t_\mathrm{Coarse}$, we expect that the increase of the speedup along with the factor $\frac{\Delta t_\mathrm{Coarse}}{\Delta t_\mathrm{Fine}}$ also occurs for different starting $\Delta t_\mathrm{Coarse}$. This behaviour is shown in Figure \ref{fig: temporal-coarsening-speedup_coarse_const}. The increase can be seen for all cases, although for $\Delta t_\mathrm{Coarse} = 10^{-2}$, it is damped. This case is quite close to the CFL condition of the PIC method and thus has a large amount of parareal iterations where the parareal error is not properly converging. As stated before, the time periods which are simulated are dependent on the coarse time step size, so one should not use this plot to choose between $\Delta t_\mathrm{Coarse}$ when a specific time range is desired.
+ \begin{figure}[h]
+    \centering
+    \includegraphics[width=0.7\linewidth]{figures/png/time_step_constant_coarse_speedup.png}
+    \caption{Speedup of parareal with temporal coarsening using different constant $\Delta t_\mathrm{Coarse}$.}
+    \label{fig: temporal-coarsening-speedup_coarse_const}
+\end{figure}
+We also expect to see the peak for different $\Delta t_\mathrm{Fine}$. This is shown in Figure \ref{fig: temporal-coarsening-speedup_fine_const}. The peak for $\Delta t_\mathrm{Fine} =10^{-4}$ occurs at $\frac{\Delta t_\mathrm{Coarse}}{\Delta t_\mathrm{Fine}} = 32$, while the highest speedup for $\Delta t_\mathrm{Fine} = 10^{-6}$ is expected to appear at a ratio beyond $512$. The reason why the turning point moves further along the x-axis is because the fine time step size is smaller. Thus, the ratio of the fine and coarse sizes can be larger before the coarse integrator becomes too inaccurate.
+ \begin{figure}[h]
+    \centering
+    \includegraphics[width=0.7\linewidth]{figures/png/time_step_constant_fine_speedup.png}
+    \caption{Speedup for parareal with temporal coarsening using different constant $\Delta t_\mathrm{Fine}$.}
+    \label{fig: temporal-coarsening-speedup_fine_const}
+\end{figure}
+
+\subsection{Subcycling}
+\label{sub: subcycling}
+
+The standard PIC algorithm consists of four steps, performed cyclically. Firstly, the particles move during the \textbf{particle mover}, after which they are collected and projected onto the grid to compute the current and charge density. These currents and charge densities at each grid cell are then used during the \textbf{field solver} section to calculate the change in electric and magnetic fields. These new forces are then projected onto the particles, whose movement will be influenced in the next \textbf{particle mover} step. If we reduce or increase the time step size, this does not influence this cycle. There is, however, an adaptation of the algorithm that does change the underlying iteration scheme. The modification in question is called subcycling and consists of performing the \textbf{particle mover} multiple times before moving on to the \textbf{field solver}. In this setting, the time step is subdivided into $\nu$ (not necessarily equal sized) substeps, $\Delta t_\nu$. The particles then move $\nu$ times influenced by the same constant fields, after which the (weighted) average of the positions and velocities are used to update the fields. These fields are then projected onto the particles, and the cycle starts anew. Subcycling can reduce computational costs in situations where the dynamics of the particles are much faster than those of the fields. This allows for the time step size, $\Delta t$, to be chosen based on the dynamics of the slower fields. In contrast, the substep sizes $\Delta t_\nu$ are chosen to be small enough to accurately approximate the movement of the particles. Often, particles move in cyclotron orbits; in situations like these, it is also possible to use subcycling for gyro-averaging. This is done by selecting $\Delta t$ to step over the gyration time scale while using the $\Delta t_\nu$ to average the movement during the gyromotion.
+
+We now turn our attention to using subcycling for the coarse solver in parareal. Subcycling can be used during the coarse integrator to obtain a more accurate approximation of the fine solution without incurring the high costs of reducing the coarse time step size, which would require performing more steps. A second approximation is made during the implemented subcycled ECSIM code; the velocity is kept constant across the subcycles \cite{lapenta_advances_2023}. This allows us to calculate all of the subcycles in parallel. This parallelisation can use the cores that are not used during the serial calculations of parareal. Since each subcycle can be calculated in (almost) perfect parallelism, the expected cost of subcycling is negligible under the constraint that the number of subcycles remains lower than or equal to the number of cores available. Our ECSIM code implements subcycling by injecting $\nu-1$ extra equispaced time points in each time step, at which only the position is updated. These positions are then averaged during the \textbf{field solver} to obtain a more accurate solution. This hopefully decreases the number of iterations parareal needs to converge. The fine solver uses a time step size of $10^{-5}$, while the coarse step size is equal to $10^{-3}$.
+
+It can be seen in Figure \ref{fig: temporal-subcycling-errors} that the accuracy does indeed increase for more subcycles. For example the version with $10$ subcycles has a parareal error of $2.8\cdot 10^{-8}$ at iteration $9$, while the simulation without subcycles has an error of $5.4\cdot 10^{-8}$.  The increased accuracy can also be noticed in the number of time steps that converge after each parareal iteration, which increase along with the number of subcycles. Figure \ref{fig: temporal-subcycling}, however, shows that one fails to obtain any improvement in the computational cost incurred. This is due to parallelisation overhead and the need to average the positions of the particles after the subcycles. These experiments converge quickly, only needing $3$ iterations to converge. The difference in how many time steps have converged at an iteration can be quite different, however. For example, for the unsubcycled version, 16 steps have converged after the second iteration, while the version with $\nu = 10$ already has 75 converged time steps. The decreased parareal errors and increased number of time steps converging per parareal iteration show that increased performance might be attainable in certain scenarios. Example situations would involve many time steps and exhibit relatively poor convergence for the parareal algorithm, requiring numerous iterations.
+
+  \begin{figure}[h]
+    \centering
+    \includegraphics[width=0.7\linewidth]{figures/png/subcycle_speedup.png}
+    \caption{Speedup of the parareal simulation compared to a serial fine solve, using different amounts of subcycling.}
+    \label{fig: temporal-subcycling}
+\end{figure}
+
+  \begin{figure}[h]
+    \centering
+    \includegraphics[width=0.7\linewidth]{figures/png/subcycle_parareal_convergence.png}
+    \caption{Estimated errors during parareal iterations for different amounts of subcycling.}
+    \label{fig: temporal-subcycling-errors}
+\end{figure}
+
+\section{Parallel Scaling}
+In chapter \ref{cha: pint}, two strategies are discussed to simulate long time frames; [A] each processor gets multiple coarse steps assigned to it, or [B] the time domain is split into separate chunks on which parareal is performed in serial. These can be used when the number of available cores is insufficient to assign a separate processor to each coarse time step. 
+We will now discuss a core aspect of any parallel algorithm: the scalability with respect to the number of cores used. This information is crucial in deciding which strategy is most fitting for the desired simulation time period. This section assumes that the number of time steps equals the number of cores. Figure \ref{fig: core scaling} demonstrates how the speedup (left) and parallel efficiency (right) change depending on the number of time steps. The speedup steadily rises with the increase in cores, however, the parallel efficiency shows that this increase is not proportionate with the extra cores used. It insinuates that it can be more efficient to split up the time domain into multiple sequential parareal sections when long-duration simulations are desired. To remedy this, one could consider larger time step sizes for the coarse solver to more quickly cross large time spans. Special care should be taken, that the convergence of parareal is not impeded due to getting too close to the CFL condition. The decrease in parallel efficiency might necessitate the use of multiple computing nodes using \texttt{MPI} or offloading to GPU. This would constitute a subject for future work. Again, the theoretical bound is shown, where the parallel efficiency is approximated with $\frac{1}{k}$. Keeping this in mind, we can see that the number of iterations needed for larger time frames only increases once from $2$ to $3$, which is shown by the theoretical bound jumping from $0.5$ to $0.33$. This indicates that the reason the parallel efficiency is not constant, is not due to an increase in iterations. It is most likely caused by parallelisation overhead.
+  \begin{figure}[h]
+    \centering
+    \includegraphics[width=1\linewidth]{figures/png/core_scaling_test.png}
+    \caption{Speedup (left) and parallel efficiency (right) of the parareal algorithm for an increasing number of cores, where each core is assigned to one coarse time step.}
+    \label{fig: core scaling}
+\end{figure}
+
+%%% ============================================================================================ %%%
+
+\section{Linear Solvers}
+\label{sec: linear solvers}
+Here, we investigate the performance of some widely used (direct and indirect) solvers to approximate the solution to the linear system of equations obtained by discretising Maxwell's equations. 
+% Direct solvers have the benefit of computing the solution \textit{exactly}; however, they may be computationally prohibitive for large systems. In a serial context, the solution should be accurate up to machine precision due to the desired exact energy conservation. Since the basic parareal algorithm does not conserve this property \cite{gander_analysis_2014}, it would have to iterate to highly stringent tolerances to achieve machine precision accuracy. Because total energy conservation is not a requirement for this work, more options are available to solve this linear system. The matrix resulting from the linear system is sparse and has a block-diagonal structure, which lends itself to iterative solvers, such as the generalised minimal residual method (GMRES). Unfortunately, the discretisation matrix is not symmetric, invalidating specific solvers, such as Cholesky-based decompositions. 
+We consider the LU decomposition method along with the commonly used iterative solvers, GMRES and BiCGSTAB outlined in Chapter \ref{cha: methodology}. We investigate the effect of choosing different combinations of these three, for the coarse and fine solvers. It is known that the computational cost of an iterative solver depends on the time step size \cite{einkemmer_adaptive_2018, hochbruck_exponential_1998}, whereas the cost of a direct solver is independent of it. We also test different preconditioners to speed up the convergence of the iterative solvers.
+
+\subsection{Combinations of Linear Solvers}
+We first consider the use of different linear solvers. Specific combinations of direct and iterative solvers could allow for better speedup or computational runtime. A possible strategy is to use a very accurate but slow direct LU solver for the fine solution for high accuracy while using a less accurate iterative solver in the coarse. However, a coarse timestep could lead to more iterations needed for the iterative solvers to converge to the desired accuracy, thus increasing the overall computational time. Figure \ref{fig: linear solver combination} shows the results of the same simulation using each linear solver combination. The left panel shows the speedup achieved, and the right panel illustrates the computational runtime for each combination under consideration. Each cluster of three bars indicates the use of a different fine solver. Each blue bar indicates a simulation where the coarse solver uses an LU solver, the orange bars represent GMRES solvers, and the green corresponds to BiCGSTAB. While both bar plots are important, the right plot is essential in understanding the influence of the different solvers. The bar plot on the left clearly shows a preference for a costly LU solver for the fine integrator. However, this may be misleading as one has to consider the overall computational runtime. The figure on the right shows that it is best to use iterative solvers for both the fine and coarse solvers, and there is no significant difference between GMRES and BiCGSTAB. This discrepancy in interpretation is caused by the difference in computational runtime caused by the multiple fine solvers. 
+As expected of parareal, the solutions are all equally accurate to their respective serial solutions. 
+  \begin{figure}[h]
+    \centering
+    \includegraphics[width=1\linewidth]{figures/png/solver_test.png}
+    \caption{Left: Speedup for parareal simulation using different combinations of linear solvers for coarse and fine. Right: Time needed for a parareal simulation using different combinations of linear solvers for coarse and fine.}
+    \label{fig: linear solver combination}
+\end{figure}
+
+\subsection{Preconditioners}
+We now investigate the influence of different preconditioners on the computational runtime of the linear solver.
+Preconditioners are transformations performed on the linear system to improve the convergence rate of linear solvers. Here, we define preconditioners to be the inverse of a matrix $\textbf{P}$ defined so that $\textbf{P}^{-1}\textbf{A}$ has an increased convergence rate for iterative methods that solve $\textbf{Ax} = \textbf{b}$. This means a preconditioned system will solve $\textbf{P}^{-1}\textbf{Ax} = \textbf{P}^{-1}\textbf{b}$. Three different types of preconditioners will be tested. The first preconditioner is the identity matrix, i.e., no preconditioning. The second is the Jacobi preconditioner, for which the preconditioning matrix corresponds to the diagonal of the matrix $\textbf{A}$; it should perform well for diagonally dominant matrices. The final preconditioner that is examined is the incomplete LU factorisation. The general idea of incomplete LU is to factorise $\textbf{A}$ into the product of a lower and upper triangular matrix such that $\textbf{A} \approx \textbf{LU}$, where $\textbf{L}$ and $\textbf{U}$ share a sparsity pattern with $\textbf{A}$. This reduces memory and computational cost requirements whilst providing a rough estimate of the solution. One can then use this solution as a starting point.
+
+Figure \ref{fig: preconditioners} shows the performance of the three preconditioners under consideration for different time step sizes for a serial implementation of CASE IV. While there is no significant difference between the identity and Jacobi preconditioners, one can see that the incomplete LU decomposition is faster when the time step size is larger and slower than the other preconditioners when the step size is reduced. While the incomplete LU preconditioner is more expensive to calculate, the iterative solver only needs a small number of iterations afterwards to solve the system during the test. This contrasts the identity and Jacobi preconditioners, which are fast to perform but might not help the solver converge fast enough, leading to many iterations when the initial guess is inaccurate.
+ \begin{figure}[h]
+    \centering
+    \includegraphics[width=1\linewidth]{figures/png/precond_test.png}
+    \caption{Time needed for serial solve of CASE IV using different preconditioners for GMRES.}
+    \label{fig: preconditioners}
+\end{figure}
+
+% \section{Discussion}
+% While the previous section showed the results of the different experiments, they will be linked together in this section. There are, after all, interesting interplays between the results that must not be overlooked. For a first example of the interconnection, one must look at the behaviour of Parareal for the non-smooth initial conditions outlined in \ref{sec: convergence}. It is clear that the convergence of Parareal strongly depends on the smoothness of the solution; in the case of non-smoothness, Parareal requires an accurate coarse solver, or it will not converge in an orderly fashion, sometimes even diverging. As a result one would prefer to use Parareal on smooth problems. If this is not the case, a more accurate coarse solver is needed, thus lowering the possible speedup. This, however, already determines the mode in which the linear solver will have to operate, more likely in the region where iterative solvers with quick preconditioners are best. The required small timesteps for the coarse solver also mean that many steps would be needed to cover more extended periods, which was found to not help the speedup of the algorithm. This means a more relaxed "CFL"-esque condition would significantly increase the number of possible implementations and use cases. \color{red} This this effect might be caused by particles moving so fast between time points that cells never experience their presence in the coarse solver. In this case, it might be possible to decrease the effect by increasing the b-splines' order in the particle-in-cell method so that a single particle influences more grid cells. Also, check whether the "CFL" condition is worse for parareal or the same as the linear.\color{black}
+
+
+%%% Local Variables: 
+%%% mode: latex
+%%% TeX-master: "thesis"
+%%% End:

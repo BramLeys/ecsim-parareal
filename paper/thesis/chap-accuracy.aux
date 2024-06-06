@@ -1,0 +1,191 @@
+\relax 
+\providecommand\hyper@newdestlabel[2]{}
+\citation{gander_analysis_2014}
+\@writefile{lof}{\addvspace {10pt}}
+\@writefile{lot}{\addvspace {10pt}}
+\@writefile{toc}{\contentsline {chapter}{\chapternumberline {5}Parareal Solvers for Particle-in-Cell Simulations}{31}{chapter.5}\protected@file@percent }
+\newlabel{cha: results}{{5}{31}{Parareal Solvers for Particle-in-Cell Simulations}{chapter.5}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {5.1}Validation of Implementations}{31}{section.5.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.1.1}Crank--Nicolson}{31}{subsection.5.1.1}\protected@file@percent }
+\newlabel{sec: cn}{{5.1.1}{31}{Crank--Nicolson}{subsection.5.1.1}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {5.1}{\ignorespaces Error obtained using Crank--Nicolson in serial and using parareal for CASE I with random initial conditions and decreasing time step sizes. The error is computed against a reference solution calculated using a times step size 50 times smaller than the smallest step size shown.}}{32}{figure.caption.25}\protected@file@percent }
+\newlabel{fig: CN-convergence-random}{{5.1}{32}{Error obtained using Crank--Nicolson in serial and using parareal for CASE I with random initial conditions and decreasing time step sizes. The error is computed against a reference solution calculated using a times step size 50 times smaller than the smallest step size shown}{figure.caption.25}{}}
+\citation{gander_analysis_2007}
+\@writefile{toc}{\contentsline {subsubsection}{Parareal Convergence}{33}{section*.26}\protected@file@percent }
+\newlabel{sub: convergence parareal}{{5.1.1}{33}{Parareal Convergence}{section*.26}{}}
+\citation{d_samaddar_parallelization_2010}
+\citation{d_samaddar_parallelization_2010}
+\@writefile{lof}{\contentsline {figure}{\numberline {5.2}{\ignorespaces Errors calculated during each parareal iteration when simulating CASE I, using different initial conditions and simulation parameters.}}{34}{figure.caption.27}\protected@file@percent }
+\newlabel{fig: CN-parareal-convergence}{{5.2}{34}{Errors calculated during each parareal iteration when simulating CASE I, using different initial conditions and simulation parameters}{figure.caption.27}{}}
+\@writefile{toc}{\contentsline {subsubsection}{Tolerance of Parareal}{34}{section*.28}\protected@file@percent }
+\newlabel{sub: tol parareal}{{5.1.1}{34}{Tolerance of Parareal}{section*.28}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {5.3}{\ignorespaces Errors of a simulation of CASE I using simulation level and time step level tolerance strategies for parareal. Left: Parareal error calculated during each parareal iteration. Right: Error of the parareal solution at each iteration compared to the serial fine solution.}}{35}{figure.caption.29}\protected@file@percent }
+\newlabel{fig: CN-parareal-convergence-tolerance}{{5.3}{35}{Errors of a simulation of CASE I using simulation level and time step level tolerance strategies for parareal. Left: Parareal error calculated during each parareal iteration. Right: Error of the parareal solution at each iteration compared to the serial fine solution}{figure.caption.29}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.1.2}Energy Conserving Semi-Implicit Method}{35}{subsection.5.1.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{Convergence Analysis}{35}{section*.30}\protected@file@percent }
+\newlabel{sub: convergence ecsim}{{5.1.2}{35}{Convergence Analysis}{section*.30}{}}
+\citation{lapenta_exactly_2017}
+\@writefile{lof}{\contentsline {figure}{\numberline {5.4}{\ignorespaces Error of position and velocity for the uncoupled particle mover compared to the analytical solution defined by CASE II for decreasing $\Delta t$.}}{36}{figure.caption.31}\protected@file@percent }
+\newlabel{fig: ecsim-convergence-posvel-time}{{5.4}{36}{Error of position and velocity for the uncoupled particle mover compared to the analytical solution defined by CASE II for decreasing $\Delta t$}{figure.caption.31}{}}
+\newlabel{fig: ecsim-convergence-elmag-time}{{5.5a}{36}{Error of the electric and magnetic field for the uncoupled field solver compared to the analytical solution defined by CASE II for decreasing $\Delta t$}{figure.caption.32}{}}
+\newlabel{sub@fig: ecsim-convergence-elmag-time}{{a}{36}{Error of the electric and magnetic field for the uncoupled field solver compared to the analytical solution defined by CASE II for decreasing $\Delta t$}{figure.caption.32}{}}
+\newlabel{fig: ecsim-convergence-elmag-space}{{5.5b}{36}{Error of the electric and magnetic field for the uncoupled field solver compared to the analytical solution defined by CASE II for decreasing $\Delta x$}{figure.caption.32}{}}
+\newlabel{sub@fig: ecsim-convergence-elmag-space}{{b}{36}{Error of the electric and magnetic field for the uncoupled field solver compared to the analytical solution defined by CASE II for decreasing $\Delta x$}{figure.caption.32}{}}
+\citation{lapenta_exactly_2017}
+\citation{lapenta_advances_2023}
+\@writefile{lof}{\contentsline {figure}{\numberline {5.6}{\ignorespaces Error of the state variables found by applying ECSIM to CASE III for decreasing $\Delta t$. The error is computed against a reference solution calculated using a times step size 50 times smaller than the smallest step size shown.}}{37}{figure.caption.33}\protected@file@percent }
+\newlabel{fig: 1D-1V-convergence}{{5.6}{37}{Error of the state variables found by applying ECSIM to CASE III for decreasing $\Delta t$. The error is computed against a reference solution calculated using a times step size 50 times smaller than the smallest step size shown}{figure.caption.33}{}}
+\@writefile{toc}{\contentsline {subsubsection}{Simulation Experiments}{37}{section*.35}\protected@file@percent }
+\newlabel{sub: simulations}{{5.1.2}{37}{Simulation Experiments}{section*.35}{}}
+\citation{lapenta_advances_2023}
+\citation{lapenta_advances_2023}
+\citation{d_samaddar_parallelization_2010}
+\@writefile{lof}{\contentsline {figure}{\numberline {5.7}{\ignorespaces Error of the state variables found by applying ECSIM to CASE IV for decreasing $\Delta t$. The error is computed against a reference solution calculated using a times step size 50 times smaller than the smallest step size shown.}}{38}{figure.caption.34}\protected@file@percent }
+\newlabel{fig: 1D-3V-convergence}{{5.7}{38}{Error of the state variables found by applying ECSIM to CASE IV for decreasing $\Delta t$. The error is computed against a reference solution calculated using a times step size 50 times smaller than the smallest step size shown}{figure.caption.34}{}}
+\newlabel{fig: ecsim-sim-1d1v-init}{{5.8a}{39}{Phase space of CASE III at time $t=0$ s}{figure.caption.36}{}}
+\newlabel{sub@fig: ecsim-sim-1d1v-init}{{a}{39}{Phase space of CASE III at time $t=0$ s}{figure.caption.36}{}}
+\newlabel{fig: ecsim-sim-1d1v-end}{{5.8b}{39}{Phase space of CASE III at time $t=50$ s}{figure.caption.36}{}}
+\newlabel{sub@fig: ecsim-sim-1d1v-end}{{b}{39}{Phase space of CASE III at time $t=50$ s}{figure.caption.36}{}}
+\newlabel{fig: ecsim-sim-1d1v-energy}{{5.8c}{39}{Error in energy of CASE III compared to the initial condition for each time step}{figure.caption.36}{}}
+\newlabel{sub@fig: ecsim-sim-1d1v-energy}{{c}{39}{Error in energy of CASE III compared to the initial condition for each time step}{figure.caption.36}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {5.8}{\ignorespaces Serial simulation results of CASE III.}}{39}{figure.caption.36}\protected@file@percent }
+\newlabel{fig: 1D-1V-sim}{{5.8}{39}{Serial simulation results of CASE III}{figure.caption.36}{}}
+\@writefile{toc}{\contentsline {subsubsection}{Errors on State and Energy for Parareal}{39}{section*.39}\protected@file@percent }
+\newlabel{sub: errors}{{5.1.2}{39}{Errors on State and Energy for Parareal}{section*.39}{}}
+\newlabel{fig: ecsim-sim-1d3v-init}{{5.9a}{40}{Phase space of CASE IV at time $t=0$\,s}{figure.caption.37}{}}
+\newlabel{sub@fig: ecsim-sim-1d3v-init}{{a}{40}{Phase space of CASE IV at time $t=0$\,s}{figure.caption.37}{}}
+\newlabel{fig: ecsim-sim-1d3v-end}{{5.9b}{40}{Phase space of CASE IV at time $t=62$\,s}{figure.caption.37}{}}
+\newlabel{sub@fig: ecsim-sim-1d3v-end}{{b}{40}{Phase space of CASE IV at time $t=62$\,s}{figure.caption.37}{}}
+\newlabel{fig: ecsim-sim-1d3v-energy}{{5.9c}{40}{Error in the energy of CASE IV compared to the initial condition for each time step}{figure.caption.37}{}}
+\newlabel{sub@fig: ecsim-sim-1d3v-energy}{{c}{40}{Error in the energy of CASE IV compared to the initial condition for each time step}{figure.caption.37}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {5.9}{\ignorespaces Serial simulation results of CASE IV.}}{40}{figure.caption.37}\protected@file@percent }
+\newlabel{fig: 1D-3V-sim}{{5.9}{40}{Serial simulation results of CASE IV}{figure.caption.37}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {5.10}{\ignorespaces Parareal errors calculated during each parareal iteration, when applying parareal to CASE IV using a grid discretisation of 512 and 5000 cells. The coarse integrator uses a time step size of $\Delta t_\mathrm  {Coarse} = 10^{-2}$, while the fine solver uses $\Delta t_\mathrm  {Fine} = 10^{-4}$.}}{41}{figure.caption.38}\protected@file@percent }
+\newlabel{fig: 1D-3V-parareal-convergence}{{5.10}{41}{Parareal errors calculated during each parareal iteration, when applying parareal to CASE IV using a grid discretisation of 512 and 5000 cells. The coarse integrator uses a time step size of $\Delta t_\mathrm {Coarse} = 10^{-2}$, while the fine solver uses $\Delta t_\mathrm {Fine} = 10^{-4}$}{figure.caption.38}{}}
+\newlabel{fig: error-vs-statechange}{{5.11a}{41}{Parareal error and the error compared to a serial fine solution during each parareal iteration of a simulation of CASE IV}{figure.caption.40}{}}
+\newlabel{sub@fig: error-vs-statechange}{{a}{41}{Parareal error and the error compared to a serial fine solution during each parareal iteration of a simulation of CASE IV}{figure.caption.40}{}}
+\newlabel{fig: energy-vs-statechange}{{5.11b}{41}{Error in energy and the parareal error during each parareal iteration of a simulation of CASE IV}{figure.caption.40}{}}
+\newlabel{sub@fig: energy-vs-statechange}{{b}{41}{Error in energy and the parareal error during each parareal iteration of a simulation of CASE IV}{figure.caption.40}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {5.11}{\ignorespaces Parareal error as upper bound for error compared to serial fine solution and energy error.}}{41}{figure.caption.40}\protected@file@percent }
+\newlabel{fig: parareal bound}{{5.11}{41}{Parareal error as upper bound for error compared to serial fine solution and energy error}{figure.caption.40}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.1.3}Tolerance of Linear Solver}{42}{subsection.5.1.3}\protected@file@percent }
+\newlabel{sub: tol lin solver}{{5.1.3}{42}{Tolerance of Linear Solver}{subsection.5.1.3}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {5.1}{\ignorespaces Results of parareal on CASE I using different tolerances for the linear solver with a tolerance of $10^{-8}$ for parareal.}}{42}{table.caption.41}\protected@file@percent }
+\newlabel{tab: tolerance_lin_solver_8}{{5.1}{42}{Results of parareal on CASE I using different tolerances for the linear solver with a tolerance of $10^{-8}$ for parareal}{table.caption.41}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {5.2}{\ignorespaces Results of parareal on CASE I using different tolerances for the linear solver with a tolerance of $10^{-9}$ for parareal.}}{43}{table.caption.42}\protected@file@percent }
+\newlabel{tab: tolerance_lin_solver_9}{{5.2}{43}{Results of parareal on CASE I using different tolerances for the linear solver with a tolerance of $10^{-9}$ for parareal}{table.caption.42}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {5.2}Parallel Performance}{43}{section.5.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.2.1}Temporal Coarsening}{43}{subsection.5.2.1}\protected@file@percent }
+\newlabel{sec: temporal coarsening}{{5.2.1}{43}{Temporal Coarsening}{subsection.5.2.1}{}}
+\@writefile{toc}{\contentsline {subsubsection}{Time step size}{43}{section*.43}\protected@file@percent }
+\newlabel{sub: step size}{{5.2.1}{43}{Time step size}{section*.43}{}}
+\newlabel{fig: constant coarse time}{{5.12a}{45}{Computational runtime of serial fine solution and parareal solution for different fine time step sizes. $\Delta t_\mathrm {Coarse} = 10^{-3}$}{figure.caption.44}{}}
+\newlabel{sub@fig: constant coarse time}{{a}{45}{Computational runtime of serial fine solution and parareal solution for different fine time step sizes. $\Delta t_\mathrm {Coarse} = 10^{-3}$}{figure.caption.44}{}}
+\newlabel{fig: constant coarse single speedup}{{5.12b}{45}{Speedup of parareal and the theoretical speedup neglecting parallel overhead for different fine time step sizes. $\Delta t_\mathrm {Coarse} = 10^{-3}$}{figure.caption.44}{}}
+\newlabel{sub@fig: constant coarse single speedup}{{b}{45}{Speedup of parareal and the theoretical speedup neglecting parallel overhead for different fine time step sizes. $\Delta t_\mathrm {Coarse} = 10^{-3}$}{figure.caption.44}{}}
+\newlabel{fig: constant fine time}{{5.12c}{45}{Computational runtime of serial fine solution and parareal solution for different coarse time step sizes. $\Delta t_\mathrm {Fine} = 10^{-5}$}{figure.caption.44}{}}
+\newlabel{sub@fig: constant fine time}{{c}{45}{Computational runtime of serial fine solution and parareal solution for different coarse time step sizes. $\Delta t_\mathrm {Fine} = 10^{-5}$}{figure.caption.44}{}}
+\newlabel{fig: constant fine single speedup}{{5.12d}{45}{Speedup of parareal and the theoretical speedup neglecting parallel overhead for different coarse time step sizes. $\Delta t_\mathrm {Fine} = 10^{-5}$}{figure.caption.44}{}}
+\newlabel{sub@fig: constant fine single speedup}{{d}{45}{Speedup of parareal and the theoretical speedup neglecting parallel overhead for different coarse time step sizes. $\Delta t_\mathrm {Fine} = 10^{-5}$}{figure.caption.44}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {5.12}{\ignorespaces Temporal coarsening experiments simulating CASE IV.}}{45}{figure.caption.44}\protected@file@percent }
+\newlabel{fig: temporal-coarsening}{{5.12}{45}{Temporal coarsening experiments simulating CASE IV}{figure.caption.44}{}}
+\citation{lapenta_advances_2023}
+\@writefile{lof}{\contentsline {figure}{\numberline {5.13}{\ignorespaces Speedup of parareal simulations of CASE IV with temporal coarsening using decreasing $\Delta t_\mathrm  {Fine}$, starting from different constant $\Delta t_\mathrm  {Coarse}$.}}{46}{figure.caption.45}\protected@file@percent }
+\newlabel{fig: temporal-coarsening-speedup_coarse_const}{{5.13}{46}{Speedup of parareal simulations of CASE IV with temporal coarsening using decreasing $\Delta t_\mathrm {Fine}$, starting from different constant $\Delta t_\mathrm {Coarse}$}{figure.caption.45}{}}
+\@writefile{toc}{\contentsline {subsubsection}{Subcycling}{46}{section*.47}\protected@file@percent }
+\newlabel{sub: subcycling}{{5.2.1}{46}{Subcycling}{section*.47}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {5.14}{\ignorespaces Speedup for parareal with temporal coarsening using different constant $\Delta t_\mathrm  {Fine}$, simulating CASE IV.}}{47}{figure.caption.46}\protected@file@percent }
+\newlabel{fig: temporal-coarsening-speedup_fine_const}{{5.14}{47}{Speedup for parareal with temporal coarsening using different constant $\Delta t_\mathrm {Fine}$, simulating CASE IV}{figure.caption.46}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {5.15}{\ignorespaces Speedup of the parareal simulation of CASE IV compared to a serial fine solve, using different amounts of subcycling in the coarse integrator.}}{48}{figure.caption.48}\protected@file@percent }
+\newlabel{fig: temporal-subcycling}{{5.15}{48}{Speedup of the parareal simulation of CASE IV compared to a serial fine solve, using different amounts of subcycling in the coarse integrator}{figure.caption.48}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {5.16}{\ignorespaces Parareal errors during each parareal iteration for different amounts of subcycling in the coarse integrator, simulating CASE IV. }}{48}{figure.caption.49}\protected@file@percent }
+\newlabel{fig: temporal-subcycling-errors}{{5.16}{48}{Parareal errors during each parareal iteration for different amounts of subcycling in the coarse integrator, simulating CASE IV}{figure.caption.49}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.2.2}Parallel Scaling}{48}{subsection.5.2.2}\protected@file@percent }
+\newlabel{sec: parallel scaling}{{5.2.2}{48}{Parallel Scaling}{subsection.5.2.2}{}}
+\citation{einkemmer_adaptive_2018}
+\citation{hochbruck_exponential_1998}
+\newlabel{fig: core scaling speedup}{{5.17a}{49}{Speedup}{figure.caption.50}{}}
+\newlabel{sub@fig: core scaling speedup}{{a}{49}{Speedup}{figure.caption.50}{}}
+\newlabel{fig: core scaling efficiency}{{5.17b}{49}{Parallel efficiency}{figure.caption.50}{}}
+\newlabel{sub@fig: core scaling efficiency}{{b}{49}{Parallel efficiency}{figure.caption.50}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {5.17}{\ignorespaces Parallel performance of the parareal algorithm applied to CASE IV for an increasing number of cores, where each core is assigned to one coarse time step, $N_x = 512$, $\Delta t_\mathrm  {Coarse} = 10^{-3}$, $\Delta t_\mathrm  {Fine} = 10^{-5}$.}}{49}{figure.caption.50}\protected@file@percent }
+\newlabel{fig: core scaling}{{5.17}{49}{Parallel performance of the parareal algorithm applied to CASE IV for an increasing number of cores, where each core is assigned to one coarse time step, $N_x = 512$, $\Delta t_\mathrm {Coarse} = 10^{-3}$, $\Delta t_\mathrm {Fine} = 10^{-5}$}{figure.caption.50}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.2.3}Linear Solvers}{49}{subsection.5.2.3}\protected@file@percent }
+\newlabel{sec: linear solvers}{{5.2.3}{49}{Linear Solvers}{subsection.5.2.3}{}}
+\@writefile{toc}{\contentsline {subsubsection}{Combinations of Linear Solvers}{50}{section*.51}\protected@file@percent }
+\newlabel{sec: comb lin solv}{{5.2.3}{50}{Combinations of Linear Solvers}{section*.51}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {5.18}{\ignorespaces Left: Speedup for parareal simulations of CASE IV using different combinations of linear solvers for coarse and fine. Right: Time needed for parareal simulations of CASE IV using different combinations of linear solvers for coarse and fine.}}{50}{figure.caption.52}\protected@file@percent }
+\newlabel{fig: linear solver combination}{{5.18}{50}{Left: Speedup for parareal simulations of CASE IV using different combinations of linear solvers for coarse and fine. Right: Time needed for parareal simulations of CASE IV using different combinations of linear solvers for coarse and fine}{figure.caption.52}{}}
+\@writefile{toc}{\contentsline {subsubsection}{Preconditioners}{51}{section*.53}\protected@file@percent }
+\newlabel{sec: precond}{{5.2.3}{51}{Preconditioners}{section*.53}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {5.19}{\ignorespaces Time needed for serial solve of CASE IV using different preconditioners for GMRES.}}{51}{figure.caption.54}\protected@file@percent }
+\newlabel{fig: preconditioners}{{5.19}{51}{Time needed for serial solve of CASE IV using different preconditioners for GMRES}{figure.caption.54}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {5.3}Discussion}{52}{section.5.3}\protected@file@percent }
+\@setckpt{thesis/chap-accuracy}{
+\setcounter{page}{53}
+\setcounter{equation}{0}
+\setcounter{enumi}{0}
+\setcounter{enumii}{0}
+\setcounter{enumiii}{0}
+\setcounter{enumiv}{0}
+\setcounter{footnote}{0}
+\setcounter{mpfootnote}{0}
+\setcounter{@memmarkcntra}{0}
+\setcounter{storedpagenumber}{1}
+\setcounter{book}{0}
+\setcounter{part}{0}
+\setcounter{chapter}{5}
+\setcounter{section}{3}
+\setcounter{subsection}{0}
+\setcounter{subsubsection}{0}
+\setcounter{paragraph}{0}
+\setcounter{subparagraph}{0}
+\setcounter{@ppsavesec}{0}
+\setcounter{@ppsaveapp}{0}
+\setcounter{vslineno}{0}
+\setcounter{poemline}{0}
+\setcounter{modulo@vs}{0}
+\setcounter{memfvsline}{0}
+\setcounter{verse}{0}
+\setcounter{chrsinstr}{0}
+\setcounter{poem}{0}
+\setcounter{newflo@tctr}{4}
+\setcounter{@contsubnum}{0}
+\setcounter{section@level}{0}
+\setcounter{maxsecnumdepth}{2}
+\setcounter{sidefootnote}{0}
+\setcounter{pagenote}{0}
+\setcounter{pagenoteshadow}{0}
+\setcounter{memfbvline}{0}
+\setcounter{bvlinectr}{0}
+\setcounter{cp@cntr}{0}
+\setcounter{ism@mctr}{0}
+\setcounter{xsm@mctr}{0}
+\setcounter{csm@mctr}{0}
+\setcounter{ksm@mctr}{0}
+\setcounter{xksm@mctr}{0}
+\setcounter{cksm@mctr}{0}
+\setcounter{msm@mctr}{0}
+\setcounter{xmsm@mctr}{0}
+\setcounter{cmsm@mctr}{0}
+\setcounter{bsm@mctr}{0}
+\setcounter{workm@mctr}{0}
+\setcounter{sheetsequence}{63}
+\setcounter{lastsheet}{74}
+\setcounter{lastpage}{64}
+\setcounter{figure}{19}
+\setcounter{lofdepth}{1}
+\setcounter{table}{2}
+\setcounter{lotdepth}{1}
+\setcounter{parentequation}{0}
+\setcounter{float@type}{4}
+\setcounter{caption@flags}{2}
+\setcounter{continuedfloat}{0}
+\setcounter{subfigure}{0}
+\setcounter{subtable}{0}
+\setcounter{Item}{0}
+\setcounter{Hfootnote}{0}
+\setcounter{bookmark@seq@number}{26}
+\setcounter{memhycontfloat}{0}
+\setcounter{Hpagenote}{0}
+}

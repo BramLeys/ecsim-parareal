@@ -1,20 +1,66 @@
-\chapter{Regular grid necessity}
-\label{app:C}
-Appendices hold useful data which is not essential to understand the work
-done in the master's thesis. An example is a (program) source.
-An appendix can also have sections as well as figures and references\cite{h2g2}.
+\chapter{Energy-Conservation}
+\label{app: regular grid}
+Our derivation follows the formal proof of energy conservation of Lapenta (2017) \cite{lapenta_exactly_2017}. We decide to take some factors into account, which are ignored in the original, which allows us to make a more accurate comparison with the underlying Poynting's theorem.
 
-\section{More Lorem}
-\lipsum[50]
-
-\subsection{Lorem 15--17}
-\lipsum[15-17]
-
-\subsection{Lorem 18--19}
-\lipsum[18-19]
-
-\section{Lorem 51}
-\lipsum[51]
+We begin with the velocity update rule of the particle mover
+\begin{equation}
+    \textbf{v}_p^{n+1} = \textbf{v}_p^n + \frac{q_p \Delta t}{m_p}\left(\textbf{E}^{n+\theta}(\textbf{x}_p^{n+\frac{1}{2}}) + \bar{\textbf{v}}_p \times \textbf{B}^n(\textbf{x}_p^{n+\frac{1}{2}})\right)
+\end{equation}
+For energy conservation, we set $\theta = \frac{1}{2}$, which allows us to use the midpoint approximation $\textbf{E}^{n+\theta} = \bar{\textbf{E}} = \frac{\textbf{E}^{n+1} + \textbf{E}^{n}}{2}$. Next, we take the dot product of both sides with $\bar{\textbf{v}}_p = \frac{\textbf{v}^{n+1}_p + \textbf{v}_p^{n}}{2}$ and rearrange the terms.
+\begin{equation}
+    \frac{\|\textbf{v}_p^{n+1}\|^2 - \|\textbf{v}_p^{n}\|^2}{2 m_p \Delta t}= q_p \bar{\textbf{v}}_p \cdot \left(\bar{\textbf{E}}(\textbf{x}_p^{n+\frac{1}{2}}) + \bar{\textbf{v}}_p \times \textbf{B}^n(\textbf{x}_p^{n+\frac{1}{2}})\right)
+\end{equation}
+Using the properties of the cross product, $\bar{\textbf{v}}_p \cdot (\bar{\textbf{v}}_p \times \textbf{B}^n(\textbf{x}_p^{n+\frac{1}{2}})) = 0$, the equation simplifies to:
+\begin{equation}
+    \frac{\|\textbf{v}_p^{n+1}\|^2 - \|\textbf{v}_p^{n}\|^2}{2 m_p \Delta t}= q_p \bar{\textbf{v}}_p \cdot \bar{\textbf{E}}(\textbf{x}_p^{n+\frac{1}{2}})
+\end{equation}
+Summing over all particles and using the interpolation function to replace $\bar{\textbf{E}}(\textbf{x}_p^{n+\frac{1}{2}})$:
+\begin{equation}
+     \sum_p \frac{\|\textbf{v}_p^{n+1}\|^2 - \|\textbf{v}_p^{n}\|^2}{2 m_p \Delta t}= \sum_p q_p \bar{\textbf{v}}_p \cdot \sum_g \bar{\textbf{E}}_g W_{pg}
+\end{equation}
+We take the summation over the grid cells outside of the summation of the particles. Then, the definition of the current density is used to substitute the right hand side $\bar{\textbf{J}}_g = \frac{1}{V_g} \sum_p q_p \bar{\textbf{v}}_p W_{pg}$. We make sure to include the $\frac{1}{V_g}$ factor because the current density is used in the field solver instead of the current.
+\begin{equation}
+\label{eq: subs kinetic}
+     \sum_p \frac{\|\textbf{v}_p^{n+1}\|^2 - \|\textbf{v}_p^{n}\|^2}{2 m_p \Delta t}= \sum_g \bar{\textbf{E}}_g \bar{\textbf{J}}_g V_g
+\end{equation}
+We now attempt to obtain a similar result starting from the field solver equations.
+\begin{equation}
+\left\{\begin{aligned} 
+ 	\nabla_g \times \bar{\mathbf{E}} +\frac{1}{c}\frac{\mathbf{B}_g^{n+1} - \mathbf{B}_g^{n}}{\Delta t} &= 0 \\
+ 	\nabla_g \times \bar{\mathbf{B}} -\frac{1}{c}\frac{\mathbf{E}_g^{n+1} - \mathbf{E}_g^{n}}{\Delta t} &= \frac{4 \pi}{c}\bar{\mathbf{J}}_g\\
+ \end{aligned}\right.
+\end{equation}
+The first equation is dotted with $\bar{\textbf{B}}_g = \frac{\textbf{B}^{n+1}_g + \textbf{B}^{n}_g}{2}$ and the second with $\bar{\textbf{E}}_g = \frac{\textbf{E}^{n+1}_g + \textbf{E}^{n}_g}{2}$. The rearranged result can be written as
+\begin{equation}
+\left\{\begin{aligned} 
+ 	\frac{\|\mathbf{B}_g^{n+1}\|^2 - \|\mathbf{B}_g^{n}\|^2}{2 c \Delta t} &= -\bar{\textbf{B}}_g \cdot \nabla_g \times \bar{\mathbf{E}} \\
+ 	\frac{\|\mathbf{E}_g^{n+1}\|^2 - \|\mathbf{E}_g^{n}\|^2}{2 c \Delta t} &= -\frac{4 \pi}{c}\bar{\textbf{E}}_g \cdot \bar{\mathbf{J}}_g + \bar{\textbf{E}}_g \cdot \nabla_g \times \bar{\mathbf{B}}  \\
+ \end{aligned}\right.
+\end{equation}
+Summing the two equations and rearranging the factors gives
+\begin{align}
+    &\frac{\|\mathbf{B}_g^{n+1}\|^2 - \|\mathbf{B}_g^{n}\|^2}{8 \pi \Delta t} + \frac{\|\mathbf{E}_g^{n+1}\|^2 - \|\mathbf{E}_g^{n}\|^2}{8 \pi \Delta t} \notag \\
+     &= -\bar{\textbf{E}}_g \cdot \bar{\mathbf{J}}_g - \frac{c}{4\pi} \left( \bar{\textbf{B}}_g \cdot \nabla_g \times \bar{\mathbf{E}}- \bar{\textbf{E}}_g \cdot \nabla_g \times \mathbf{B}^{n+ \theta} \right)
+\end{align}
+We now use the property $\nabla_g \cdot (\bar{\textbf{E}} \times \bar{\mathbf{B}}) = \bar{\textbf{B}}_g \cdot (\nabla_g \times \bar{\mathbf{E}})- \bar{\textbf{E}}_g \cdot (\nabla_g \times \bar{\mathbf{B}})$
+\begin{equation}
+        \frac{\|\mathbf{B}_g^{n+1}\|^2 - \|\mathbf{B}_g^{n}\|^2}{8 \pi \Delta t} + \frac{\|\mathbf{E}_g^{n+1}\|^2 - \|\mathbf{E}_g^{n}\|^2}{8 \pi \Delta t} = -\bar{\textbf{E}}_g \cdot \bar{\mathbf{J}}_g - \frac{c}{4\pi} \nabla_g \cdot (\bar{\textbf{E}} \times \bar{\mathbf{B}}) 
+\end{equation}
+We then multiply everything by $V_g$ and sum over all cells
+\begin{align}
+        &-\sum_g \frac{\left(\|\mathbf{B}_g^{n+1}\|^2 + \|\mathbf{E}_g^{n+1}\|^2 - \|\mathbf{E}_g^{n}\|^2 - \|\mathbf{B}_g^{n}\|^2\right) V_g}{8 \pi \Delta t} \notag \\
+         &=\sum_g \bar{\textbf{E}}_g \cdot \bar{\mathbf{J}}_g V_g + \frac{c}{4\pi} \sum_g V_g \nabla_g \cdot (\bar{\textbf{E}} \times \bar{\mathbf{B}}) 
+\end{align}
+This is the discretised Poynting's theorem, showing that the change in electromagnetic energy in the system is equal to the work performed on the charges plus the flow of energy out of the system. However, from equation \ref{eq: subs kinetic} we know what the work is that is performed on the charges. 
+\begin{align}
+	&-\sum_g \frac{\left(\|\mathbf{B}_g^{n+1}\|^2 + \|\mathbf{E}_g^{n+1}\|^2 - \|\mathbf{E}_g^{n}\|^2 - \|\mathbf{B}_g^{n}\|^2\right) V_g}{8 \pi \Delta t} - \sum_p \frac{\|\textbf{v}_p^{n+1}\|^2 - \|\textbf{v}_p^{n}\|^2}{2 m_p \Delta t} \notag \\
+	&= \frac{c}{4\pi} \sum_g V_g \nabla_g \cdot (\bar{\textbf{E}} \times \bar{\mathbf{B}})
+\end{align}
+We perform one final substitution where we introduce the total energy contained in the discretised system at a time point $t_n$ as $P^n = \sum_p \frac{\|\textbf{v}_p^{n}\|^2}{2 m_p} + \sum_g \frac{\|\mathbf{E}_g^{n}\|^2 V_g}{8 \pi} + \sum_g \frac{\|\mathbf{B}_g^{n}\|^2 V_g}{8 \pi}$. The terms represent, in order, the kinetic, electric and magnetic energy contained in the system (using Gaussian units). 
+\begin{equation}
+        -\frac{P^{n+1} - P^{n}}{\Delta t}= \frac{c}{4\pi} \sum_g V_g \nabla_g \cdot (\bar{\textbf{E}} \times \bar{\mathbf{B}}) 
+\end{equation}
+With this notation and interpretation, we can see that the negative, discretised derivative of the total energy at a time point $t_{n + \theta}$ is equal to the discretisation of the energy flow out of the system. This indicates that if the energy flow out of the system is 0, then the discretised ECSIM algorithm will be energy conserving as well.
 
 %%% Local Variables: 
 %%% mode: latex

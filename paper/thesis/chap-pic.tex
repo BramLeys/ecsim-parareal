@@ -1,65 +1,131 @@
-\chapter{Particle-In-Cell simulations of Plasma}
+\chapter{Particle-in-Cell Simulations of Plasma}
 \label{cha: pic}
+This chapter describes the ideas behind the family of plasma simulation methods used in this thesis: PIC methods. After a general introduction, we describe the specific choice of method: the energy-conserving semi-implicit method by Lapenta (2017) \cite{lapenta_exactly_2017}.
 
-\color{red}
-Particle-in-cell, PIC, methods are closely related to the kinetic approach and rely on the Vlasov equation as well.
-PIC methods combine many particles close to each other in phase space into superparticles. These superparticles have a finite shape, and their interaction with others weakens as their overlap increases. The shape of a superparticle, $p$,is determined in phase space by the \textit{shape functions} for \textbf{x} and \textbf{v}, $S_{\textbf{x}}(\textbf{x}-\textbf{x}_p(t))$ and $S_{\textbf{v}}(\textbf{v}-\textbf{v}_p(t))$ respectively. It is assumed that the actual physical distribution can be represented as the superposition of these superparticles:
-\[f(\textbf{x}(t),\textbf{v}(t),t) = \sum_{p}N_pS_{\textbf{x}}(\textbf{x}-\textbf{x}_p(t))S_{\textbf{v}}(\textbf{v}-\textbf{v}_p(t))\]
-The evolution of these particles follows the laws of motion\eqref{eq:cont particle mover} while conserving the total number of particles represented by the superparticle.
-\begin{equation} \label{eq:cont particle mover}
-\begin{split}
-	\diff{{\textbf{x}_p}}{t} &= \textbf{v}_p \\
-	\diff{{\textbf{v}_p}}{t} &= \frac{1}{m_p}\left(\textbf{F} + q_p(\textbf{E} + \textbf{v}\times \textbf{B})\right)
-\end{split}
+\section{General Outline}
+PIC methods are closely related to the kinetic approach. During PIC the evolution of the statistical distribution function is simulated using the dynamics of a sampled distribution. PIC methods use the Vlasov equation to simulate the plasma dynamics and thus assume collisionless plasma. This assumption is warranted for weakly coupled plasmas. To simulate such systems, it would be computationally infeasible to follow each particle. As such PIC combines many particles close to each other in phase space into superparticles. These superparticles, representing many physical particles, have a finite shape, and their interaction with others weakens as their overlap increases. This behaviour allows the simulated system to retain the properties of the weakly coupled system it represents. The shape of a superparticle, $p$, is determined in phase space by \textbf{shape functions} for \textbf{x} and \textbf{v}, $S_{\textbf{x}}(\textbf{x}-\textbf{x}_p(t))$ and $S_{\textbf{v}}(\textbf{v}-\textbf{v}_p(t))$ respectively. It is assumed that the actual physical distribution can be represented as the superposition of these superparticles \cite{markidis_multi-scale_2010}
+\begin{equation}
+    f(\textbf{x}(t),\textbf{v}(t),t) = \sum_{p}N_pS_{\textbf{x}}(\textbf{x}-\textbf{x}_p(t))S_{\textbf{v}}(\textbf{v}-\textbf{v}_p(t))
 \end{equation}
-These equations describe the movement of the particles across the domain, and as such the calculation of the positions and velocities of the particles is referred to as the "particle mover" part. The section corresponding to the computation of the self-consistent electric and magnetic fields is called the "field solver". The electric field, \textbf{E}, and magnetic field, \textbf{B}, are calculated by solving the Maxwell equations:
-\begin{align}
-	\nabla \cdot \mathbf{E} &= \frac{\rho}{\varepsilon_0} \\
-	\nabla \cdot \mathbf{B} &= 0 \\
-	\nabla \times \mathbf{E} &= -\frac{1}{c}\frac{\partial \mathbf{B}}{\partial t} \\
-	\nabla \times \mathbf{B} &= \frac{1}{c}\left(\mathbf{J} + \frac{\partial \mathbf{E}}{\partial t}\right)
-\end{align}
-\color{blue}write something about the fact that you use normalized units\color{black} 
-\color{red}
-Calculating these in practice requires discretization. The domain is discretised in space using a regular grid. On this grid, the electric field is stored at the vertices, while the magnetic field is kept at the centres. Particles can then move across this grid, and the force experienced by these particles is computed by interpolating the electric and magnetic fields at the neighbouring grid points. The standard \textit{interpolation function} from a particle, $p$, to a grid point , $g$, is defined as\cite{lapenta_exactly_2017} \[W(\textbf{x}_g - \textbf{x}_p) = \int S_{\textbf{x}}(\textbf{x}-\textbf{x}_p)b_0\left(\frac{\textbf{x}-\textbf{x}_g}{\Delta\textbf{x}}\right) d\textbf{x}\],
-where $b_0$ is the b-spline of order 0. This means that if the shape function is a b-spline of order $l$, $S_\textbf{x} = \frac{1}{\Delta x}b_l\left(\frac{\textbf{x}-\textbf{x}_p}{\Delta x}\right))$, meaning the particle shape function is the same size as the grid cell size, then the interpolation function can be simplified using the properties of b-splines to 
-\[W(\textbf{x}_g - \textbf{x}_p) =b_{l+1}\left(\frac{\textbf{x}-\textbf{x}_g}{\Delta \textbf{x}}\right)\]
+The dynamics of these particles follow the laws of motion
+\begin{equation} \label{eq: cont particle mover}
+\left\{\begin{aligned} 
+	\diff{{\textbf{x}_p}}{t} &= \textbf{v}_p \\
+	\diff{{\textbf{v}_p}}{t} &= \frac{q_p}{m_p}\left(\textbf{E} + \frac{\textbf{v}_p\times \textbf{B}}{c}\right)
+\end{aligned}\right.
+\end{equation}
+The influence of the electric field, $\textbf{E}$, and magnetic field $\textbf{B}$ are due to the Lorentz force. 
+These equations describe the movement of the particles in the spatial domain in relation to the time domain, and as such the calculation of the positions and velocities of the particles is referred to as the \textbf{particle mover} part. The movement and position of the particles also define a current density, \textbf{J}, and charge density, $\rho$, at each point in time and space. These values, in turn, influence the magnetic and electric fields. The section corresponding to the computation of the electric and magnetic fields is called the \textbf{field solver}. The electric and magnetic fields are calculated by simulating the Maxwell equations (\ref{eq: gauss}, \ref{eq: gauss magnetic}, \ref{eq: Faraday}, \ref{eq: Ampere}). 
 
-The integration of the differential equations sets apart all of the different PIC methods. For example, a simple algorithm could use the \textit{leap-frog scheme} for the particle mover: 
-\begin{align*}
-	\textbf{x}_p^{n+1} &= \textbf{x}_p^n + \Delta t \textbf{v}_p^{n+\frac{1}{2}} \\
-	\textbf{v}_p^{n+\frac{3}{2}} &= \textbf{v}_p^{n+\frac{1}{2}} + \Delta t \frac{q_p}{m_p}\left(\frac{\textbf{F}(\textbf{x}_p^{n+1})}{q_p} +\textbf{E}_p(\textbf{x}_p^{n+1}) + \bar{\textbf{v}}_p \times \textbf{B}(\textbf{x}_p^{n+1})\right)\\
-\end{align*},
-where $\bar{\textbf{v}}_p=\frac{\textbf{v}_p^{n+\frac{3}{2}}+\textbf{v}_p^{n+\frac{1}{2}}}{2}$.
-The position and velocity are calculated at different time steps. This staggering makes the method second-order accurate since it is essentially a centred difference. The electric and magnetic fields can be found by solving the following equations \cite{jiang_origin_1996}:
-  \begin{align*}
+PIC uses a semi-Lagrangian/semi-Eulerian discretisation scheme. As in a Lagrangian scheme, the particles are tracked during the simulation; however, they are coupled to the electromagnetic fields, which are calculated on an Eulerian grid. 
+
+\section{Numerical Implementations}
+To simulate the Maxwell equations in practice we perform a discretisation in both space and time. Typically, the domain is discretised in space using a regular grid. On this grid, the electric field is often stored at the vertices, while the magnetic field is kept at the centres. This creates a "staggered" grid in the spatial domain. Particles can then move across this grid, and the force experienced by these particles is computed by interpolating the electric and magnetic fields at the neighbouring grid points. The standard \textbf{interpolation function} of a particle, $p$, to a grid point, $g$, is defined as 
+\begin{equation}
+    W(\textbf{x}_p - \textbf{x}_g) = \int S_{\textbf{x}}(\textbf{x}-\textbf{x}_p)b_0\left(\frac{\textbf{x}-\textbf{x}_g}{\Delta\textbf{x}}\right) d\textbf{x}
+\end{equation}
+where $b_0$ is the b-spline of order 0. If the particle shape function is a b-spline of order $l$ and the same size as a grid cell, $S_\textbf{x} = \frac{1}{\Delta x}b_l\left(\frac{\textbf{x}-\textbf{x}_p}{\Delta x}\right)$, the interpolation function can be simplified using the properties of b-splines.
+\begin{equation}
+  W(\textbf{x}_p - \textbf{x}_g) = W_{pg} = b_{l+1}\left(\frac{\textbf{x}_p-\textbf{x}_g}{\Delta \textbf{x}}\right)  
+\end{equation}
+The shape functions are often b-splines of order 0, making the interpolation function a b-spline of order 1. 
+The different numerical integration schemes of the differential equations set apart the different PIC methods. For example, a simple algorithm could use the \textbf{leap-frog scheme} for the particle mover
+\begin{equation}
+\left\{\begin{aligned} 
+	\textbf{x}_p^{n+\frac{1}{2}} &= \textbf{x}_p^{n-\frac{1}{2}} + \Delta t \textbf{v}_p^{n} \\
+	\textbf{v}_p^{n+1} &= \textbf{v}_p^{n} + \Delta t \frac{q_p}{m_p}\left(\textbf{E}^{n+\frac{1}{2}}(\textbf{x}_p^{n+\frac{1}{2}}) + \bar{\textbf{v}}_p \times \textbf{B}^{n+\frac{1}{2}}(\textbf{x}_p^{n+\frac{1}{2}})\right)\\
+\end{aligned}\right.
+\end{equation}
+where $\bar{\textbf{v}}_p=\frac{\textbf{v}_p^{n+1}+\textbf{v}_p^{n}}{2}$ and $\textbf{E}^{n+\frac{1}{2}}(\textbf{x}_p^{n+\frac{1}{2}})$ and $\textbf{B}^{n+\frac{1}{2}}(\textbf{x}_p^{n+\frac{1}{2}})$ are the electric and magnetic fields, respectively, at time $t_{n+\frac{1}{2}}$ and position $\textbf{x}_p^{n+\frac{1}{2}}$. These are calculated numerically as the interpolated values from each gridpoint to the position of the particle in question
+\begin{equation}
+\begin{split}
+    \textbf{E}^{n+\frac{1}{2}}(\textbf{x}_p^{n+\frac{1}{2}}) &= \sum_g \textbf{E}_g^{n+\frac{1}{2}} W_{pg} = \textbf{E}_p^{n+\frac{1}{2}}\\
+    \textbf{B}^{n+\frac{1}{2}}(\textbf{x}_p^{n+\frac{1}{2}}) &= \sum_g \textbf{B}_g^{n+\frac{1}{2}} W_{pg} = \textbf{B}_p^{n+\frac{1}{2}}
+\end{split}
+\end{equation} 
+
+Crucially, the position and velocity are calculated at different time steps for the leap-frog scheme. This staggering makes the method second-order accurate in time as it calculates a centred finite difference. The electric and magnetic fields can be computed by solving the equations \cite{jiang_origin_1996}
+\begin{equation}
+\left\{\begin{aligned}
 	\nabla_g \times \mathbf{E}^{n} +\frac{1}{c}\frac{\mathbf{B}^{n+1} - \mathbf{B}^{n}}{\Delta t} &= 0 \\
 	\nabla_g \times \mathbf{B}^{n} -\frac{1}{c}\frac{\mathbf{E}^{n+1} - \mathbf{E}^{n}}{\Delta t} &= \frac{4 \pi}{c}\bar{\mathbf{J}}_g\\
-\end{align*}
-Depending on how the current at each grid point, $\bar{\mathbf{J}}_g$, is calculated also heavily influences the properties of the method. For example, energy conservation heavily depends on accurately capturing the non-linear interaction between particles and fields. If energy is not conserved, then extra care needs to be taken so that results obtained by this method would not be too different from reality. While multiple PIC methods are energy-conserving, most are not direct and require some form of linear or non-linear iterations. \cite{giovanni_lapenta_introduction_nodate}
+\end{aligned}\right.
+\end{equation}
+Depending on how the current density at each grid point, $\bar{\mathbf{J}}_g$, is calculated also heavily influences the properties of the method. Energy conservation heavily depends on accurately capturing the non-linear interaction between particles and fields. If energy is not conserved, then extra care must be taken so that this method's results would still accurately represent the physical system. While multiple PIC methods are energy-conserving, most are iterative and require some form of linear or non-linear iterations.
 
-\subsection{Energy Conserving Semi-Implicit Method}
+We describe one final special technique of PIC methods called subcycling. If subcycling is used, the field solver is not always performed when the particle mover is simulated. Instead, one performs the particle mover multiple times and uses the average value of these time steps when performing the field solver. This cuts down on the computational cost in exchange for accuracy. As particles typically follow a gyrating path in the presence of electromagnetic fields \cite{chen_lecture_2003}, subcycling can also be used to select a large time step size to step over the gyration cycle. The position and velocity can then be computed at stages during the gyration, giving an average over the gyromotion while calculating the fields. This is especially useful when the particle movement is much faster than the field dynamics. Without subcycling, the smallest time scale of the two would need to be chosen for the simulation. This means a very fine time scale might need to be used to simulate slowly evolving fields, which would be unnecessary. With subcycling, the particles can be simulated at their respective time scale, while the fields can be computed with a larger time step size.
+\cite{chen_implicit_2023, lapenta_advances_2023}
+
+\section{Numerical Constraints}
+As PIC methods involve the discretisation of PDEs, they also often suffer from limitations on the grid sizes for the temporal and spatial domains. As the Langmuir waves are typically the fastest oscillations in a plasma, the time step size must allow the method to resolve these scales. Based on the Nyquist condition this can be translated into the following requirement
+\begin{equation}
+    \omega_{pe}\Delta t < 2
+\end{equation}
+In the spatial domain, the electron Debye length puts a constraint on the maximal grid cell size
+\begin{equation}
+    \Delta x < \zeta \lambda_D
+\end{equation}
+where $\zeta$ is a constant value of order one defined by the used PIC method. 
+This avoids the so-called \textbf{finite grid instability} that arises due to aliasing Fourier modes \cite{giovanni_lapenta_introduction_nodate}. On top of these two requirements, explicit PIC methods can also suffer from a CFL condition which limits the ratio between $\Delta t$ and $\Delta x$ to
+\begin{equation}
+    \frac{c \Delta t}{\Delta x} < C
+\end{equation}
+where C is a constant value defined by the used PIC (often 1). 
+This constraint can be interpreted by imagining a particle or wave moving at a speed $\textbf{v}$ over the spatial grid. The lefthand side gives the number of grid cells such a particle or wave would cross in a single time step. The righthand side of the constraint defines how many grid cells can be skipped before the method turns unstable. This indicates that there should also be a requirement using the maximal velocity of the particles, however, we assume that the waves travel at the speed of light in a vacuum and that particles move slower than $c$. This assures that $\frac{c \Delta t}{\Delta x} < C$ gives the most stringent condition.
+
+\section{Energy Conserving Semi-Implicit Method}
 \label{subsec: plasma intro ECSIM}
-The energy-conserving semi-implicit method, ECSIM, is fully energy-conserving, unconditionally stable, and only requires a linear solver \cite{lapenta_exactly_2017}. It is based on iPIC3D \cite{markidis_multi-scale_2010} and the energy conserving PIC $\theta$-scheme \cite{brackbill_implicit_1982}. Its particle mover is given by 
-\begin{align*}
+The energy-conserving semi-implicit method (ECSIM), developed by Lapenta (2017) \cite{lapenta_exactly_2017}, is fully energy-conserving, has no finite grid instability and only requires a linear solver \cite{lapenta_exactly_2017}. It is based on the iPIC3D method of Markidis et al. (2010) \cite{markidis_multi-scale_2010} and the energy-conserving PIC $\theta$-scheme by Brackbill et al. (1982) \cite{brackbill_implicit_1982}. The particle mover is given by 
+\begin{equation}
+\left\{\begin{aligned} 
 	\textbf{x}_p^{n+\frac{1}{2}} &= \textbf{x}_p^{n-\frac{1}{2}} + \Delta t \textbf{v}_p^{n} \\
 	\textbf{v}_p^{n+1} &= \textbf{v}_p^{n} + \Delta t \frac{q_p}{m_p}\left(\textbf{E}^{n+\theta}_p(\textbf{x}_p^{n+\frac{1}{2}}) + \bar{\textbf{v}}_p \times \textbf{B}^n(\textbf{x}_p^{n+\frac{1}{2}})\right)\\
-\end{align*}
-and its field solver is: 
-   \begin{align*}
- 	\nabla_g \times \mathbf{E}^{n + \theta} +\frac{1}{c}\frac{\mathbf{B}^{n+1} - \mathbf{B}^{n}}{\Delta t} &= 0 \\
- 	\nabla_g \times \mathbf{B}^{n+ \theta} -\frac{1}{c}\frac{\mathbf{E}^{n+1} - \mathbf{E}^{n}}{\Delta t} &= \frac{4 \pi}{c}\bar{\mathbf{J}}_g\\
- \end{align*}
- While other algorithms keep some non-linearities or linearize the current to ensure energy conservation, ECSIM calculates the current without approximation. It does this by using a \textit{mass matrices}, $M_{gg'}$, the elements of which are given by (using the shorthand notation $W(\textbf{x}_g- \textbf{x}_p)= W_{gp}$): \[
- M^{ij}_{g g'} = \sum_p q_p \alpha_p^{ij,n} W_{g'p} W_{gp}\]
- The elements $\alpha_p^{ij,n}$ are part of the rotation matrix that allows for $\bar{\textbf{v}}_p$ to be written as \[\bar{\textbf{v}}_p = \hat{\textbf{v}}_p + \frac{q_p \Delta t}{2 m_p}\hat{\textbf{E}}_p\]
+ \end{aligned}\right.
+\end{equation}
+and its field solver is given by
+\begin{equation}
+\left\{\begin{aligned} 
+ 	\nabla_g \times \mathbf{E}^{n + \theta} +\frac{1}{c}\frac{\mathbf{B}_g^{n+1} - \mathbf{B}_g^{n}}{\Delta t} &= 0 \\
+ 	\nabla_g \times \mathbf{B}^{n+ \theta} -\frac{1}{c}\frac{\mathbf{E}_g^{n+1} - \mathbf{E}_g^{n}}{\Delta t} &= \frac{4 \pi}{c}\bar{\mathbf{J}}_g\\
+ \end{aligned}\right.
+\end{equation}
+Lapenta (2017) \cite{lapenta_exactly_2017} shows that exact energy conservation is warranted under three conditions:
+\begin{itemize}
+    \item $\theta$ = 0.5
+    \item The current density must be calculated using the average velocity, $\bar{\textbf{v}}_p$: \[\bar{\mathbf{J}}_g = \frac{1}{V_g} \sum_{p} q_p \bar{\textbf{v}}_p W(\textbf{x}_p^{n+\frac{1}{2}} - \textbf{x}_g )\]
+    \item The discretised curl operator must preserve the following property of the continuous curl operator:
+    \[\nabla \cdot (\textbf{E} \times \textbf{B}) = \textbf{B} \cdot (\nabla \times \textbf{E}) - \textbf{E} \cdot (\nabla \times \textbf{B})\]
+\end{itemize}
+We provide our own derivation in Appendix \ref{app: regular grid}, aiming to offer further insight into this proof.
+The discretisation used in the field solver gives a large, sparse, block diagonal system which must be solved during each time step. The field solver is second-order accurate in time; the updated values for the fields are calculated between time points, while the used values in the time derivative are at the time points. We use the same spatial discretisation of the curl operator as in the original paper. For a one-dimensional spatial domain, this gives
+\begin{align}
+    \nabla_g \times \mathbf{E}^{n + \theta} &= \frac{1}{\Delta x}\left[\begin{matrix}
+        0  \\
+        -(E_{z,g+1} - E_{z,g})\\
+            (E_{y,g+1} - E_{y,g})\\
+    \end{matrix}\right]\\
+    \nabla_g \times \mathbf{B}^{n + \theta} &= \frac{1}{\Delta x}\left[\begin{matrix}
+        0  \\
+        -(B_{z,g+1} - B_{z,g})\\
+            (B_{y,g+1} - B_{y,g})\\
+    \end{matrix}\right]\\
+\end{align}
+
+As the magnetic and electric fields are stored at the cell centres and vertices, respectively, this discretisation is also second-order. The calculated spatial finite difference value is used in the middle of the two used values at the spatial position of the temporal finite difference. This makes the simple first-order finite difference, in effect, a centred difference. 
+
+The attentive reader may have noticed that the magnetic field term in the particle mover is not computed at the time $t_{n+\theta}$. As the magnetic field does not perform any work on the particles, the energy of the system is unaffected by this approximation. As a result, however, ECSIM can rewrite the particle mover as a direct update rule. It does this by defining a rotation matrix $\alpha_p^n$ which allows $\bar{\textbf{v}}_p$ to be written as
+\[\bar{\textbf{v}}_p = \hat{\textbf{v}}_p + \frac{q_p \Delta t}{2 m_p}\hat{\textbf{E}}_p\]
  where 
  \[ \hat{\textbf{v}}_p = \alpha^n_p \textbf{v}_p^n, \quad \hat{\textbf{E}}_p = \alpha^n_p \textbf{E}_p^{n+\theta}
  \]
- Using these mass matrices, the current can be calculated as 
+ This allows ECSIM to calculate the current density $\bar{\textbf{J}}_g$ exactly, without needing an iteration scheme, usually required due to the non-linear coupling.
  \[\bar{\textbf{J}}_g = \frac{1}{V_g}\left(\sum_p q_p \hat{\textbf{v}}_p W_{pg} + \frac{q_p \Delta t}{2 m_p}\sum_{g'}M_{g g'} \textbf{E}^{n+\theta}_{g'}\right)\]
-The ECSIM algorithm is also compatible with smoothing operations and subcycling. Subcycling is the act of not performing the field equations in every time step. This cuts down on the computational cost in exchange for accuracy. Since particles normally follow a gyrating path in the presence of the electromagnetic fields, the subcycling can also be used to step over the gyration cycle for the fields, while being able to use an average of the position during the gyration while calculating the fields in the next time step.
-\color{black}
+ where $V_g$ is the volume of the grid cell $g$ and the matrices $M_{g g'}$ are called the \textbf{mass matrices}. The elements of these matrices, $M_{g g'}$, are given by
+ \begin{equation}
+     M_{g g'}^{ij} = \frac{\beta}{V_g}\sum_p q_p \alpha^{ij,n}_p W_{p g'} W_{p g}
+ \end{equation}
+
+ Lapenta (2023) \cite{lapenta_advances_2023} shows that the exact energy-conservation of ECSIM is compatible with subcycling.
 
 
 %%% Local Variables: 

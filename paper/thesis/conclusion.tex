@@ -1,5 +1,13 @@
 \chapter{Conclusion}
-\label{cha:conclusion}
+\label{cha: conclusion}
+This thesis concludes with the affirmation that the parareal algorithm is effectively applicable to the ECSIM for plasma simulations, yielding accurate results for a range of problems exploring plasma dynamics. While exact energy conservation remains a challenge, we establish that the error in energy can be tightly bound relative to the error in the state variables.
+
+We assess the parallel performance of the parareal algorithm when used with ECSIM. Given that solving Maxwell's equations addresses hyperbolic equations, which typically exhibit poor convergence properties with parareal, our findings are particularly noteworthy. We demonstrate that significant speedup is possible with the optimal selection of coarse and fine integrators, which can be the same numerical simulation technique with varying time step sizes. Reducing the time step size of the fine solver enhances the speedup of parareal, though this benefit must be weighed against the computational cost for highly accurate solutions. Conversely, increasing the coarse solver's time step size is beneficial only up to a point beyond which additional parareal iterations negate the speedup gains to an extent.
+
+Our investigation reveals that subcycling in the coarse solver generally decreases speedup due to the associated parallel overhead despite achieving increased accuracy. Optimal performance is achieved using iterative solvers for both coarse and fine integrators, coupled with inexpensive preconditioners, mainly due to the relatively small coarse time step size constrained by ECSIM's accuracy constraints. This small step size is necessary to ensure proper convergence for parareal. The coarse propagator must be sufficiently accurate to avoid accuracy constraints which inhibit the convergence of parareal. Under these conditions, we obtain results showing a parallel efficiency of $0.28$ on a simulation of 96 time steps using $\Delta t_\mathrm{Coarse} = 10^{-4}$, $\Delta t_\mathrm{Fine} \approx 2\cdot 10^{-7}$ and $N_x = 512$. This simulation only requires $3$ parareal iterations.
+
+Future research could further enhance performance by employing methods with less restrictive accuracy constraints. This would allow for cheaper coarse solvers and validate alternative preconditioners and linear solvers. This could lead to even greater computational efficiencies and broader applicability of the parareal algorithm in plasma simulations. Other parallel-in-time methods which include coarsening in the spatial domain, e.g. PFASST, are also known to provide better performance results than parareal.
+ Offloading to GPU could also improve performance as this opens up the possibility of using thousands of cores on a single node. However, we do notice diminishing returns for increasing core count.
 
 %%% Local Variables: 
 %%% mode: latex

@@ -1,0 +1,133 @@
+\chapter{Methodology}
+\label{cha: methodology}
+
+%%% ============================================================================================ %%%
+
+We now investigate the performance of the parareal method applied to PIC simulations using a simplified model of ECSIM. This simplified model only takes one dimension into account for the spatial discretisation. However, the velocity and field vectors at each position are tracked in either one dimension (1D1V) or three dimensions (1D3V). This enables the simulation of complex phenomena while reducing computational complexity.
+
+Firstly, the efficacy of parareal is tested using a well-known implicit method: the Crank--Nicolson (CN) integrator \cite{Crank_Nicolson_1947}. We apply this method to the one-dimensional diffusion equation and show that CN indeed achieves second-order accurate solutions, with and without parareal. The performance of the ECSIM solver with parareal is the main point of interest for this project. To test the validity of our code implementation of the ECSIM algorithm, unit tests are performed, and we compare our simulation results with those presented by Lapenta in 2017 and 2023 \cite{lapenta_exactly_2017,lapenta_advances_2023}. After confirming a correct implementation, we combine ECSIM with parareal to test its performance. We quantify the efficacy of the parareal algorithm applied to a method using the following metrics:
+ \begin{itemize}
+    
+    \item \textbf{Accuracy}, calculated as the error of the parareal solution compared to the serial solution of the fine integrator
+    
+    \item \textbf{Speedup}, defined as the ratio of time taken by the serial solve to that of the parareal solve $\left(\frac{T_\mathrm{serial}}{T_\mathrm{parareal}}\right)$
+    
+    \item \textbf{Parallel efficiency}, defined as the ratio of the speedup obtained to the number of cores used $\left(\frac{\text{speedup}}{\text{number of cores}}\right)$
+    
+    \item \textbf{Computational runtime}, the simulation time elapsed
+ 
+ \end{itemize}
+We analyse these aspects of the parareal algorithm using the following set of test cases:
+\begin{itemize}
+
+    \item CASE I: Diffusion equation
+
+    \item CASE II: Decoupled manufactured solutions
+
+    \item CASE III: Two-stream instability, an electrostatic toy problem
+
+    \item CASE IV: Weibel or transverse beam instability, an electromagnetic toy problem
+    \end{itemize}
+
+In this chapter, we discuss the different test cases and implementation details. The following chapter contains the results of the experiments.
+
+\section{Test Cases}
+\subsection{CASE I: Diffusion Equation}
+The first test case that will be used during the experiments is the one-dimensional diffusion equation
+\begin{equation}
+    \frac{\partial u(x,t)}{\partial t} = \frac{\partial^2 u(x, t)}{\partial x} \quad \text{with initial condition} \quad u_0(x) = u(x,0)
+\end{equation}
+where $u(x,t)$ is the state variable at position $x$ and time $t$. The spatial domain is split up into $N_x$ grid cells. The spatial derivative is discretised using the standard second-order centred finite difference scheme, and periodic boundary conditions are used on the spatial domain $x \in [0,2\pi[$. The diffusion equation is a parabolic PDE and has been shown to have good convergence properties for parareal \cite{gander_analysis_2007}, especially when A-stable methods are used.
+
+\subsection{CASE II: Decoupled Manufactured Solutions}
+The second test case is used to show the correctness of the implementation of the ECSIM particle mover and field solver separately. Due to interactions between the particle mover and the field solver, the order of the complete ECSIM method can be different from the order of the particle mover and field solver on their own \cite{lapenta_exactly_2017}. As a result, we only show the second-order convergence of the field solver and particle mover without any coupling between them. This is done using two manufactured solutions, where the initial conditions and inputs are designed so that a desired analytical solution will be approximated. This test case involves a 1D3V domain, meaning the spatial domain is one-dimensional, while the velocity of each particle and the electric and magnetic field vectors at each grid cell are three-dimensional. When advancing the position, only the first dimension of the velocity is used.
+
+The particle mover is tested by only considering one particle which is influenced by given external fields. The desired velocity in function of time is chosen as \[
+    \textbf{v}(t) = \left[\begin{matrix}
+    \cos(t)\\
+    -\sin(t)\\
+    \cos(t) - \sin(t)
+    \end{matrix}\right]
+\]
+To obtain such a solution for the velocity the position, electric field and magnetic field can be chosen as.
+\[
+    x(t) = \sin(t), \quad
+    \textbf{E}(t) = \left[\begin{matrix}
+    -\frac{m}{q}\sin(t) + \frac{m}{2q}\cos(t)\\
+    -\frac{m}{2q}\sin(t)\\
+    -\frac{m}{2q}\sin(t) - \frac{3m}{2q}\cos(t)
+    \end{matrix}\right], \quad \textbf{B}(t) = \left[\begin{matrix}
+    -\frac{m}{2q}\\
+    \frac{m}{2q}\\
+    \frac{m}{2q}
+    \end{matrix}\right]
+\]
+Note that the magnetic field is stationary in time, allows us to achieve second-order accuracy in time, otherwise the coupling with the magnetic field would break down the method to first-order.
+
+The field solver is also tested using a manufactured solution. We define an analytical solution to the Maxwell equations and set the initial conditions equal to the value obtained by the analytical solution at $t=0$.
+\[    \textbf{E}(x,t) = \left[\begin{matrix}
+    0\\
+    \cos(\omega t)\sin(k x)\\
+    0
+    \end{matrix}\right], \quad \textbf{B}(x,t) = \left[\begin{matrix}
+    0\\
+    0\\
+    -\sin(\omega t)\cos(k x)
+    \end{matrix}\right]
+\]
+These equations are valid if $k = \omega$; in our implementation we choose to set these to $\omega = k = 3$.
+
+We close our description of this test case with the statement that special care must be taken when sampling the analytical solution. The different discretised equations use different grid points in the temporal and spatial domain. For example, the position is calculated between time points $t_{n+\frac{1}{2}}$, while the velocity is computed at each time point $t_n$. In the spatial domain, the electric field is tracked on the grid cell vertices, while the magnetic field is stored on the grid cell centres. If the values are not sampled at the correct point in the space-time domain, the accuracy of the method might break down.
+
+
+\subsection{CASE III: Two-Stream Instability}
+The first of the two fully coupled plasma simulation test cases we use is the 1D1V two-stream instability. We assume an initially uniform and unmagnetised plasma, divided into two Maxwellian counter-streaming beams. The two-stream instability arises when more particles are faster than the phase velocity of the electric field wave than there are slower particles. The wave will absorb energy from the particles, exponentially growing the wave, and the streams will mix. In our setup, the base velocity of these beams is $\frac{|v_0|}{c} = 0.2$, and the thermal velocity is equal to $\frac{v_th}{c} = 0.01$. We then offset the velocity with a small perturbation to excite the instability of the fastest growing mode in our setup $k = 3$
+$\delta v = \frac{v_{th}}{10}\sin(\frac{2\pi}{L} m \textbf{x}_p)$
+\cite{chen_introduction_1984}. We note that this test case cannot fully test the magnetic field coupling as it does not influence the particles or electric field in the 1D1V case. Figure \ref{fig: two-stream instability} shows the used initial velocity distribution of the two-stream instability.
+\begin{figure}
+    \centering
+    \includegraphics[width=0.7\linewidth]{images/two-stream-distr.png}
+    \caption{Particle velocity distribution function of the two-stream instability.}
+    \label{fig: two-stream instability}
+\end{figure}
+
+\subsection{CASE IV: Weibel Instability}
+The final test case is a full 1D3V transverse beam or Weibel instability. Here, the magnetic field plays a large role in the instability. It arises for two counter-streaming beams with a velocity anisotropy in one direction. We again assume an initially uniform and unmagnetized plasma, where the $y$-direction velocity is higher than the other directions $x$ and $z$. The base velocity of our beams is $\frac{|v_0|}{c} = 0.8$ in the $y$-direction, and the thermal velocity is equal to $\frac{v_th}{c} = 0.01$ for all directions. In this scenario, a magnetic field that arises in the $x$ or $z$ direction, e.g. $\textbf{B} = B_z \cos(k x)$,  would create current sheets $\textbf{j} = q_p n \textbf{v}_p$ that are phased to generate the magnetic field creating the shape. This leads to instability as the magnetic field grows and grows \cite{chen_introduction_1984}. This behaviour is shown in Figure \ref{fig: weibel instability}, where the deflection of the particles is visualized.
+\begin{figure}
+    \centering
+    \includegraphics[width=0.7\linewidth]{images/weibel_mechanism.png}
+    \caption{Physical mechanism of the Weibel instability \cite{chen_introduction_1984}.}
+    \label{fig: weibel instability}
+\end{figure}
+
+
+\section{Implementation Details}
+The developed ECSIM code only depends on the standard \texttt{C++} libraries and the publicly available \texttt{Eigen} library \cite{gael_guennebaud_and_benoit_jacob_and_others_eigen_2010}. The code is parallelised using \texttt{OpenMP}, which supports shared-memory parallelisation and GPU-offloading (from version  4.0 onward). While GPU-offloading is beyond the scope of this work, one could easily adapt this code by replacing the \texttt{Eigen} matrices with a GPU-supported linear algebra library. The code developed within the framework of this project is open-source and can be obtained from \url{https://github.com/BramLeys/ecsim-parareal/tree/main}. 
+
+Using \texttt{OpenMP} instead of \texttt{MPI} leads to some implementation choices for parareal. Parareal consists of a serial part, where the coarse integrators and updates are performed, and a parallel section, where the fine solver is computed. This means there are idle cores during the serial section that can be used for other calculations. When the parallelisation is performed using \texttt{MPI}, cores are often employed in a pipelining scheme to minimise the number of idle cores. In this framework, after a time step is updated, it is immediately sent to a different core to be simulated using the fine solver instead of waiting until the new values for all time steps are computed. As we are using \texttt{OpenMP}, we will instead attempt to use these idle cores to improve the accuracy of the coarse solver while using parallelisation to counter the increased computational cost (see section \ref{sub: subcycling} for details). \texttt{OpenMP} is designed for shared-memory systems, and as such, all tests are performed on one node. 
+Since GPUs have a vast amount of computational cores on one node, this would allow for more cores while still being able to make optimal use of \texttt{OpenMP}. To use multiple nodes, \texttt{MPI} would be preferred to efficiently use the available cores.
+ The tests were performed on two systems: an MSI GS65 Stealth 9SF with an Intel i7-9750H CPU at a base clock speed of 2.60GHz and 32 GB of RAM and the Tier-2 wICE system at the Flemish Supercomputing Center (VSC). The experiments were run on the Sapphire Rapids nodes, each with 2 Intel Xeon Platinum 8468 CPUs, with a total of 96 cores running at 2.10GHz base clock. Each node has 256 GiB of RAM. The preliminary tests were performed on the MSI GS65, while time-sensitive experiments, such as the speedup and performance tests, were performed on the VSC. 
+
+\section{Linear Solvers}
+ECSIM must solve a linear system of equations during the field solver step to update the electric and magnetic fields in accordance with Maxwell's equations. In the next chapter, we explore different solvers for use in the coarse and fine integrators of parareal. Here, we present potential methods for solving this system, making a distinction between direct and iterative solvers.
+
+Direct solvers have the advantage of computing the solution exactly. However, they can be computationally prohibitive for large systems. In a serial context, the solution to the linear system generated in ECSIM should be accurate up to machine precision, ensuring exact energy conservation. Since the basic parareal algorithm does not inherently conserve this property \cite{gander_analysis_2014}, it must iterate to very stringent tolerances to achieve machine precision energy conservation. As total energy conservation is not a requirement for this thesis, we have more flexibility in choosing methods to solve this linear system. This allows us to consider a broader range of solvers beyond those that achieve machine precision.
+
+The matrix resulting from the linear system is sparse and has a block-diagonal structure, which lends itself to iterative solvers, such as the generalised minimal residual method (GMRES). The discretisation matrix is not symmetric, invalidating specific solvers, such as Cholesky-based decompositions. 
+
+We now outline the three methods used in the further chapters: sparse lower upper decomposition (sparse LU decomposition), GMRES \cite{youcef_saad_martin_h_schultz_gmres_1986} and biconjugate gradient stabilised method (BiCGSTAB) \cite{van_der_vorst_bi-cgstab_1992}.
+
+\subsubsection{Sparse Lower Upper Decomposition}
+LU decomposition is a direct method that factorises a matrix $\textbf{A}$ into a lower triangular matrix $\textbf{L}$ and upper triangular $\textbf{U}$ such that $\textbf{A} = \textbf{LU}$. To ensure a proper decomposition for any square matrix, it might be necessary to perform a permutation of rows so that there are no 0 elements on the diagonal of $\textbf{A}$ at each step. This is called LU decomposition with partial pivoting. This leads to $\textbf{PA} = \textbf{LU}$. In the sparse case, this permutation matrix $\textbf{P}$ is also chosen to minimise fill-in. Fill-in is the occurrence of a non-zero in the $\textbf{L}$ or $\textbf{U}$ matrices, while the element at the same place in the $\textbf{A}$ matrix is zero. The factorisation matrices can cheaply compute the solution to the linear system using forward and backward substitution.
+\begin{align}
+    \textbf{Ax} &= \textbf{b}\\
+    \textbf{LUx}&= \textbf{b}\\
+    \textbf{Ly} = \textbf{b} \quad &\quad \textbf{Ux} = \textbf{y}
+\end{align}
+
+\subsubsection{Generalised Minimal Residual Method}
+GMRES is an iterative linear solver based on Krylov subspaces, starting from a given initial guess $\textbf{x}_0$. The n-th Krylov subspace can be written as $K_n = \mathrm{span}(\{\textbf{A}\textbf{x}_0-\textbf{b}, \textbf{A}(\textbf{A}\textbf{x}_0-\textbf{b}),...,\textbf{A}^{n-1}(\textbf{A}\textbf{x}_0-\textbf{b})\})$. The solution $\textbf{x}$ is approximated at iteration n by $\textbf{x}_n = \textbf{x}_0 + \textbf{Q}_n \textbf{y}_n$, where $\textbf{Q}_n$ is an orthogonal basis for $K_n$ and $\textbf{y}_n$ are the coefficients that minimise the error $\|\textbf{x}-\textbf{x}_n\|$. GMRES can suffer from storage and computational issues as the dimension of the Krylov subspace increases. GMRES must store the Hessenberg matrix, which contains all the orthogonal vectors forming the orthogonal basis. Additionally, it has to orthogonalise each new vector against all previously computed vectors, which can become quite costly. This can be remedied by ``restarting'' the algorithm. This involves starting a new GMRES algorithm using the previously found solution as the initial guess. The method is often used to solve large sparse systems and can be applied to any nonsingular square matrix\cite{he_parallel_2023}.
+
+
+\subsubsection{Biconjugate Gradient Stabilized Method}
+BiCGSTAB is another iterative method. As the name suggests, it is based on the biconjugate gradients method, which is a generalisation of the conjugate gradients method. Like the Cholesky decomposition-based methods, the conjugate gradient method does not apply to non-symmetric matrices. The biconjugate gradient method can solve non-symmetric systems; however, it is numerically unstable, leading to the use of the BiCGSTAB in most practical applications. The BiCGSTAB algorithm performs two BiCG steps followed by a stabilisation step. BiCG uses a biorthogonal system, needing to keep track of two separate residuals, which can lead to unstable behaviour. The BiCGSTAB method uses both a direction and a magnitude parameter, defined by minimising the resulting residuals like GMRES, to smooth convergence and stabilise the method. It is also often used for large sparse matrices \cite{yang_improved_2002,krasnopolsky_revisiting_2020} and can converge faster than GMRES. It cannot restart the algorithm like GMRES, although the memory requirements should be smaller than for GMRES. 

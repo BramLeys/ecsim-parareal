@@ -1,4 +1,4 @@
-
+@article{Crank_Nicolson_1947, title={A practical method for numerical evaluation of solutions of partial differential equations of the heat-conduction type}, volume={43}, DOI={10.1017/S0305004100023197}, number={1}, journal={Mathematical Proceedings of the Cambridge Philosophical Society}, author={Crank, J. and Nicolson, P.}, year={1947}, pages={50–67}} 
 @article{lederman_approximate_2018,
 	title = {An {Approximate} {Time}-{Parallel} {Method} for the {Fast} and {Accurate} {Computation} of {Particle} {Trajectories} in a {Magnetic} {Field}*},
 	volume = {06},
@@ -35,13 +35,16 @@
 }
 
 @book{lapenta_advances_2023,
-	title = {Advances in the {Implementation} of the {Exactly} {Energy} {Conserving} {Semi}-{Implicit} ({ECsim}) {Particle} in {Cell} {Method}},
-	abstract = {The Energy Conserving semi-implicit method (ECsim), presented by Lapenta in 2017, is a Particle in Cell (PIC) algorithm for the simulation of plasmas. Energy conservation is achieved within a semi-implicit formulation that does not require any non-linear solver. A mass matrix is introduced to express linearly the particle-field coupling. With the mass matrix the algorithm preserves energy conservation to machine precision. The construction of the mass matrix is the central nature of the method and also the main cost of the computational cycle. We analyze here three methods that modify the construction of the mass matrix. First, we consider how the sub-cycling of the particle motion modifies the mass matrix. Second, we introduce a form of smoothing that reduces the noise while retaining exact energy conservation. Finally, we discuss an approximation of the mass matrix that transform the ECsim scheme to the implicit moment method.},
-	author = {Lapenta, Giovanni},
-	month = jan,
-	year = {2023},
-	doi = {10.48550/arXiv.2301.08985},
-	file = {Lapenta - 2023 - Advances in the Implementation of the Exactly Ener.pdf:C\:\\Users\\bramj\\Zotero\\storage\\RRHNHP59\\Lapenta - 2023 - Advances in the Implementation of the Exactly Ener.pdf:application/pdf},
+   title={Advances in the Implementation of the Exactly Energy Conserving Semi-Implicit (ECsim) Particle-in-Cell Method},
+volume={5},
+ISSN={2624-8174},
+url={http://dx.doi.org/10.3390/physics5010007},
+DOI={10.3390/physics5010007},
+journal={Physics},
+publisher={MDPI AG},
+author={Lapenta, Giovanni},
+year={2023},
+month=jan, pages={72–89} }
 }
 
 @article{ong_deferred_2020,
@@ -95,15 +98,14 @@
 	file = {Full Text:C\:\\Users\\bramj\\Zotero\\storage\\Z3HFDXK8\\Emmett and Minion - 2012 - Toward an efficient parallel in time method for pa.pdf:application/pdf},
 }
 
-@article{henson_multigrid_2003,
-	title = {Multigrid methods for nonlinear problems: {An} overview},
-	shorttitle = {Multigrid methods for nonlinear problems},
+@inproceedings{henson_multigrid_2003,
+	title={Multigrid methods nonlinear problems: an overview},
 	doi = {10.1117/12.499473},
 	abstract = {Since their early application to elliptic partial differential equations, multigrid methods have been applied successfully to a large and growing class of problems, from elasticity and computational fluid dynamics to geodetics and molecular structures. Classical multigrid begins with a two-grid process. First, iterative relaxation is applied, whose effect is to smooth the error. Then a coarse-grid correction is applied, in which the smooth error is determined on a coarser grid. This error is interpolated to the fine grid and used to correct the fine-grid approximation. Applying this method recursively to solve the coarse-grid problem leads to multigrid. The coarse-grid correction works because the residual equation is linear. But this is not the case for nonlinear problems, and different strategies must be employed. In this presentation we describe how to apply multigrid to nonlinear problems. There are two basic approaches. The first is to apply a linearization scheme, such as the Newton's method, and to employ multigrid for the solution of the Jacobian system in each iteration. The second is to apply multigrid directly to the nonlinear problem by employing the so-called Full Approximation Scheme (FAS). In FAS a nonlinear iteration is applied to smooth the error. The full equation is solved on the coarse grid, after which the coarse-grid error is extracted from the solution. This correction is then interpolated and applied to the fine grid approximation. We describe these methods in detail, and present numerical experiments that indicate the efficacy of them.},
-	author = {Henson, Van},
-	month = jun,
-	year = {2003},
-	file = {Full Text PDF:C\:\\Users\\bramj\\Zotero\\storage\\YDPTKDP7\\Henson - 2003 - Multigrid methods for nonlinear problems An overv.pdf:application/pdf},
+	author={Van Enden Henson},
+	booktitle={IS\&T/SPIE Electronic Imaging},
+	year={2003},
+	url={https://api.semanticscholar.org/CorpusID:12571715}
 }
 
 @article{d_samaddar_parallelization_2010,
@@ -176,6 +178,8 @@
 @book{giovanni_lapenta_introduction_nodate,
 	title = {Introduction to {Plasma} {Dynamics}},
 	author = {{Giovanni Lapenta}},
+	year = {2022},
+	address = {Leuven},
 	file = {Giovanni Lapenta - Introduction to Plasma Dynamics.pdf:C\:\\Users\\bramj\\Zotero\\storage\\WTC6ND49\\Giovanni Lapenta - Introduction to Plasma Dynamics.pdf:application/pdf},
 }
 
@@ -359,21 +363,6 @@ The phrase "metal–oxide–semiconductor" is a reference to the physical struct
 	file = {SISC29(2)GanderVdw.pdf:C\:\\Users\\bramj\\Documents\\Ingenieur\\WIT\\MASTER_2\\Thesis\\Literatuur\\Parareal.pdf:application/pdf},
 }
 
-@book{langer_domain_2008,
-	address = {Berlin, Heidelberg},
-	series = {Lecture {Notes} in {Computational} {Science} and {Engineering}},
-	title = {Domain {Decomposition} {Methods} in {Science} and {Engineering} {XVII}},
-	volume = {60},
-	isbn = {978-3-540-75198-4 978-3-540-75199-1},
-	url = {http://link.springer.com/10.1007/978-3-540-75199-1},
-	language = {en},
-	urldate = {2023-12-18},
-	publisher = {Springer Berlin Heidelberg},
-	editor = {Langer, Ulrich and Discacciati, Marco and Keyes, David E. and Widlund, Olof B. and Zulehner, Walter and Barth, Timothy J. and Griebel, Michael and Keyes, David E. and Nieminen, Risto M. and Roose, Dirk and Schlick, Tamar},
-	year = {2008},
-	doi = {10.1007/978-3-540-75199-1},
-	file = {978-3-540-75199-1.pdf:C\:\\Users\\bramj\\Documents\\Ingenieur\\WIT\\MASTER_2\\Thesis\\Literatuur\\Symplectic Parareal.pdf:application/pdf},
-}
 
 @inproceedings{buvoli_imex_2021,
 	address = {Cham},
@@ -489,7 +478,6 @@ The phrase "metal–oxide–semiconductor" is a reference to the physical struct
 	author = {Courant, R. and Friedrichs, K. and Lewy, H.},
 	month = jan,
 	year = {1928},
-	note = {ADS Bibcode: 1928MatAn.100...32C},
 	pages = {32--74},
 }
 
@@ -505,7 +493,7 @@ The purpose of this Note is to propose a time discretization of a partial differ
 	number = {7},
 	urldate = {2024-01-08},
 	journal = {Comptes Rendus de l'Académie des Sciences - Series I - Mathematics},
-	author = {Lions, Jacques-Louis and Maday, Yvon and Turinici, Gabriel},
+	author = {Jacques-Louis Lions and Yvon Maday and Gabriel Turinici},
 	month = apr,
 	year = {2001},
 	pages = {661--668},
@@ -513,13 +501,18 @@ The purpose of this Note is to propose a time discretization of a partial differ
 }
 
 @article{brandt_multi-level_1976,
-	title = {Multi-{Level} {Adaptive} {Solutions}},
-	abstract = {The boundary-value problem is discretized on several grids (or finite-element spaces) of widely different mesh sizes. Interactions between these levels enable us (i) to solve the possibly nonlinear system of n discrete equations in 0(n) operations (40n additions and shifts for Poisson problems); (ii) to conveniently adapt the discretization (the local mesh size, local order of approximation, etc.) to the evolving solution in a nearly optimal way, obtaining "°°-order" approximations and low n, even when singularities are present. General theoretical analysis of the numerical process. Numerical experiments with linear and nonlinear, elliptic and mixed-type (transonic flow) problemsconfirm theoretical predictions. Similar techniques for initial-value problems are briefly discussed.},
-	language = {en},
-	author = {Brandt, Achi},
-	month = jul,
-	year = {1976},
-	file = {Brandt - Multi-Level Adaptive Solutions.pdf:C\:\\Users\\bramj\\Zotero\\storage\\G6ISXNYA\\Brandt - Multi-Level Adaptive Solutions.pdf:application/pdf},
+ ISSN = {00255718, 10886842},
+URL = {http://www.jstor.org/stable/2006422},
+abstract = {The boundary-value problem is discretized on several grids (or finite-element spaces) of widely different mesh sizes. Interactions between these levels enable us (i) to solve the possibly nonlinear system of $n$ discrete equations in $O(n)$ operations ($40n$ additions and shifts for Poisson problems); (ii) to conveniently adapt the discretization (the local mesh size, local order of approximation, etc.) to the evolving solution in a nearly optimal way, obtaining "$\infty$-order" approximations and low $n$, even when singularities are present. General theoretical analysis of the numerical process. Numerical experiments with linear and nonlinear, elliptic and mixed-type (transonic flow) problems--confirm theoretical predictions. Similar techniques for initial-value problems are briefly discussed.},
+author = {Achi Brandt},
+journal = {Mathematics of Computation},
+number = {138},
+pages = {333--390},
+publisher = {American Mathematical Society},
+title = {Multi-Level Adaptive Solutions to Boundary-Value Problems},
+urldate = {2024-06-05},
+volume = {31},
+year = {1977}
 }
 
 @inproceedings{bal_symplectic_2008,
@@ -607,7 +600,7 @@ Publisher: Nature Publishing Group},
 	number = {1},
 	urldate = {2024-01-08},
 	journal = {Journal of Computational Physics},
-	author = {Jiang, Bo-nan and Wu, Jie and Povinelli, L. A.},
+	author = {Bo-nan Jiang and Jie Wu and L.A. Povinelli},
 	month = apr,
 	year = {1996},
 	pages = {104--123},
@@ -615,30 +608,28 @@ Publisher: Nature Publishing Group},
 }
 
 @article{bautista_intel_nodate,
-	title = {Intel {Fellow}, {Director}, {Intel} {Tera}-scale {Computing} {Research} {Program}},
+	title = {From a Few Cores to Many:	A Tera-scale Computing	Research Overview},
 	language = {en},
 	author = {Bautista, Jerry and Koehl, Sean},
+	journal = {Intel Technology Journal},
+	year = {2006},
 	file = {Bautista and Koehl - Intel Fellow, Director, Intel Tera-scale Computing.pdf:C\:\\Users\\bramj\\Zotero\\storage\\ETVC2T2K\\Bautista and Koehl - Intel Fellow, Director, Intel Tera-scale Computing.pdf:application/pdf},
 }
 
 @article{adams_parallel_1999,
-	title = {Parallel multigrid solver for {3D} unstructured finite element problems},
+	title = {Parallel Multigrid Solver for 3D Unstructured Finite Element Problems},
 	url = {https://dl.acm.org/doi/10.1145/331532.331559},
 	doi = {10.1145/331532.331559},
 	abstract = {Multigrid is a popular solution method for the system of linear algebraic equations that arise from PDEs discretized with the finite element method. The application of multigrid to unstructured grid problems, however, is not well developed. We discuss a method, that uses many of the same techniques as the finite element method itself, to apply standard multigrid algorithms to unstructured finite element problems. We use maximal independent sets (MISs) as a mechanism to automatically coarsen unstructured grids; the inherent flexibility in the selection of an MIS allows for the use of heuristics to improve their effectiveness for a multigrid solver. We present parallel algorithms, based on geometric heuristics, to optimize the quality of MISs and the meshes constructed from them, for use in multigrid solvers for 3D unstructured problems. We conduct scalability studies that demonstrate the effectiveness of our methods on a problem in large deformation elasticity and plasticity of up to 40 million degrees of freedom on 960 processor IBM PowerPC 4-way SMP cluster with about 60\% parallel efficiency.},
 	language = {en},
 	urldate = {2024-01-08},
 	journal = {Proceedings of the 1999 ACM/IEEE conference on Supercomputing},
-	author = {Adams, Mark and Demmel, James W.},
+	author = {Mark F. Adams and James Demmel},
 	month = jan,
 	year = {1999},
-	note = {Conference Name: SC '99: International Conference for High Performance Computing, Networking, Storage and Analysis
-ISBN: 9781581130911
-Place: Portland Oregon USA
-Publisher: ACM},
 	pages = {27},
-	file = {Full Text:C\:\\Users\\bramj\\Zotero\\storage\\H65N4LSB\\Adams and Demmel - 1999 - Parallel multigrid solver for 3D unstructured fini.pdf:application/pdf},
 }
+
 
 @article{du_expandable_2020,
 	title = {Expandable {Parallel} {Finite} {Element} {Methods} for {Linear} {Elliptic} {Problems}},
@@ -1002,7 +993,8 @@ Publisher: Society for Industrial and Applied Mathematics},
 @misc{gael_guennebaud_and_benoit_jacob_and_others_eigen_2010,
 	title = {Eigen v3},
 	url = {http://eigen.tuxfamily.org},
-	author = {{Gael Guennebaud and Benoit Jacob and others}},
+	howpublished = {\url{http://eigen.tuxfamily.org}},
+	author = {Guennebaud, Ga{\"e}l and Jacob, Beno{\^i}t and others},
 	year = {2010},
 }
 
@@ -1134,5 +1126,211 @@ Publisher: Society for Industrial and Applied Mathematics},
 	title = {Numerical {Simulation} of {Differential} {Equations} - {Part} {I} and {Part} {II}},
 	author = {{Giovanni Samaey}},
 	month = sep,
+	address = {Leuven},
 	year = {2022},
+}
+
+@book{hockney_computer_1988,
+	title = {Computer simulation using particles},
+	isbn = {978-0-85274-392-8},
+	url = {http://archive.org/details/computersimulati0000hock},
+	abstract = {xxi, 540 pages : 24 cm; Includes bibliographical references (pages 509-523); Includes indexes; Computer experiments using particle models -- A one-dimensional plasma model -- The simulation program -- Time integration schemes -- The particle-mesh force calculation -- The solution of the field equations -- Collisionless particle models -- Particle-particle-particle-mesh (P3M) algorithms -- Plasma simulations -- Semiconductor device simulation -- Astrophysics -- Solids, liquids and phase changes},
+	language = {eng},
+	urldate = {2024-05-29},
+	publisher = {Bristol [England] ; Philadelphia : A. Hilger},
+	author = {Hockney, Roger W.},
+	collaborator = {{Internet Archive}},
+	year = {1988},
+	keywords = {Particles -- Computer simulation},
+}
+
+@book{birdsall_plasma_2018,
+	title = {Plasma {Physics} via {Computer} {Simulation}},
+	isbn = {978-1-4822-6306-0},
+	abstract = {Divided into three main parts, the book guides the reader to an understanding of the basic concepts in this fascinating field of research. Part 1 introduces you to the fundamental concepts of simulation. It examines one-dimensional electrostatic codes and electromagnetic codes, and describes the numerical methods and analysis. Part 2 explores the mathematics and physics behind the algorithms used in Part 1. In Part 3, the authors address some of the more complicated simulations in two and three dimensions. The book introduces projects to encourage practical work Readers can download plasma modeling and simulation software — the ES1 program — with implementations for PCs and Unix systems along with the original FORTRAN source code. Now available in paperback, Plasma Physics via Computer Simulation is an ideal complement to plasma physics courses and for self-study.},
+	language = {en},
+	publisher = {CRC Press},
+	author = {Birdsall, C. K. and Langdon, A. B.},
+	month = oct,
+	year = {2018},
+	note = {Google-Books-ID: R67NBQAAQBAJ},
+	keywords = {Mathematics / Applied, Mathematics / Arithmetic, Science / Life Sciences / General, Science / Physics / General, Science / Physics / Mathematical \& Computational},
+}
+
+@book{hockney_computer_2021,
+	title = {Computer {Simulation} {Using} {Particles}},
+	isbn = {978-1-4398-2205-0},
+	abstract = {Computer simulation of systems has become an important tool in scientific research and engineering design, including the simulation of systems through the motion of their constituent particles. Important examples of this are the motion of stars in galaxies, ions in hot gas plasmas, electrons in semiconductor devices, and atoms in solids and liquids. The behavior of the system is studied by programming into the computer a model of the system and then performing experiments with this model. New scientific insight is obtained by observing such computer experiments, often for controlled conditions that are not accessible in the laboratory. Computer Simulation using Particles deals with the simulation of systems by following the motion of their constituent particles. This book provides an introduction to simulation using particles based on the NGP, CIC, and P3M algorithms and the programming principles that assist with the preparations of large simulation programs based on the OLYMPUS methodology. It also includes case study examples in the fields of astrophysics, plasmas, semiconductors, and ionic solids as well as more detailed mathematical treatment of the models, such as their errors, dispersion, and optimization.This resource will help you understand how engineering design can be assisted by the ability to predict performance using the computer model before embarking on costly and time-consuming manufacture.},
+	language = {en},
+	publisher = {CRC Press},
+	author = {Hockney, R. W. and Eastwood, J. W.},
+	month = mar,
+	year = {2021},
+	note = {Google-Books-ID: nTOFkmnCQuIC},
+	keywords = {Mathematics / Applied, Science / Life Sciences / General, Science / Physics / General, Science / Physics / Mathematical \& Computational},
+}
+
+@article{wiesemann_short_nodate,
+	title = {A {Short} {Introduction} to {Plasma} {Physics}},
+	abstract = {This chapter contains a short discussion of some fundamental plasma phenomena. In section 2 we introduce key plasma properties like quasineutrality, shielding, particle transport processes and sheath formation. In section 3 we describe the simplest plasma models: collective phenomena (drifts) deduced from single-particle trajectories and fundamentals of plasma fluid dynamics. The last section discusses wave phenomena in homogeneous, unbounded, cold plasma.},
+	language = {en},
+	author = {Wiesemann, K},
+	file = {Intro to Plasma.pdf:C\:\\Users\\bramj\\Documents\\Ingenieur\\WIT\\MASTER_2\\Thesis\\Literatuur\\plasma\\Intro to Plasma.pdf:application/pdf},
+}
+
+@book{longair_high_2011,
+	address = {Cambridge ; New York},
+	edition = {3rd ed},
+	title = {High energy astrophysics},
+	isbn = {978-0-521-75618-1},
+	abstract = {"Providing students with an in-depth account of the astrophysics of high energy phenomena in the Universe, the third edition of this well-established textbook is ideal for advanced undergraduate and beginning graduate courses in high energy astrophysics. Building on the concepts and techniques taught in standard undergraduate courses, this textbook provides the astronomical and astrophysical background for students to explore more advanced topics. Special emphasis is given to the underlying physical principles of high energy astrophysics, helping students understand the essential physics. Now consolidated into a single-volume treatment, the third edition has been completely rewritten. It covers the most recent discoveries in areas such as gamma-ray bursts, ultra-high energy cosmic rays and ultra-high energy gamma rays. The topics have been rearranged and streamlined to make them more applicable to a wide range of different astrophysical problems"--},
+	language = {en},
+	publisher = {Cambridge University Press},
+	author = {Longair, Malcolm S.},
+	year = {2011},
+	keywords = {Nuclear astrophysics, Particles (Nuclear physics)},
+	file = {Longair.pdf:C\:\\Users\\bramj\\Documents\\Ingenieur\\WIT\\MASTER_2\\Thesis\\Literatuur\\plasma\\Longair.pdf:application/pdf},
+}
+
+@article{dudal_gauge_nodate,
+	title = {Gauge {Invariance} and {The} {Equivalence} {Theorem}},
+	language = {en},
+	author = {Dudal, D and Leuven, KU},
+	file = {Total.pdf:C\:\\Users\\bramj\\Documents\\Ingenieur\\WIT\\MASTER_2\\Thesis\\Literatuur\\plasma\\Total.pdf:application/pdf},
+}
+
+@book{leveque_computational_1998,
+	address = {Berlin ; New York},
+	series = {Saas-{Fee} advanced course 27 lecture notes},
+	title = {Computational methods for astrophysical fluid flow},
+	isbn = {978-3-540-64448-4},
+	language = {en},
+	number = {1997},
+	publisher = {Springer},
+	editor = {LeVeque, Randall J. and Steiner, O. and Gautschy, A. and {Schweizerische Gesellschaft für Astrophysik und Astronomie}},
+	year = {1998},
+	keywords = {Astrophysics, Fluid dynamics, Mathematical models},
+	file = {Astrophysical Flows - LeVeque.pdf:C\:\\Users\\bramj\\Documents\\Ingenieur\\WIT\\MASTER_2\\Thesis\\Literatuur\\plasma\\Astrophysical Flows - LeVeque.pdf:application/pdf},
+}
+
+@article{roberts_introduction_nodate,
+	title = {An {Introduction} to {Magnetohydrodynamics}},
+	language = {en},
+	author = {Roberts, P H},
+	file = {An_into_to_MHD_Roberts.pdf:C\:\\Users\\bramj\\Documents\\Ingenieur\\WIT\\MASTER_2\\Thesis\\Literatuur\\plasma\\An_into_to_MHD_Roberts.pdf:application/pdf},
+}
+
+@article{A_Vlasov_1968,
+doi = {10.1070/PU1968v010n06ABEH003709},
+url = {https://dx.doi.org/10.1070/PU1968v010n06ABEH003709},
+year = {1968},
+month = {jun},
+publisher = {},
+volume = {10},
+number = {6},
+pages = {721},
+author = {A A Vlasov},
+title = {THE VIBRATIONAL PROPERTIES OF AN ELECTRON GAS},
+journal = {Soviet Physics Uspekhi},
+abstract = {1. Statement of the problem 721  2. Initial equations and their simplification 722  3. Solution of the linearized equations 724  4. Dispersion of longitudinal waves 728  5. Dispersion of longitudinal waves in an electron gas with a Fermi distribution function 730  6. Dispersion of transverse waves 732  7. Summary and conclusion 733}
+}
+
+
+@book{chen_introduction_1984,
+	address = {New York},
+	edition = {2nd ed},
+	title = {Introduction to plasma physics and controlled fusion},
+	isbn = {978-0-306-41332-2},
+	language = {en},
+	publisher = {Plenum Press},
+	author = {Chen, Francis F. and Chen, Francis F.},
+	year = {1984},
+	keywords = {Plasma (Ionized gases)},
+	file = {Chen-Plasmas-1984.pdf:C\:\\Users\\bramj\\Documents\\Ingenieur\\WIT\\MASTER_2\\Thesis\\Literatuur\\plasma\\Chen-Plasmas-1984.pdf:application/pdf},
+}
+
+@book{chen_lecture_2003,
+	address = {Boston, MA},
+	title = {Lecture {Notes} on {Principles} of {Plasma} {Processing}},
+	copyright = {http://www.springer.com/tdm},
+	isbn = {978-0-306-47497-2 978-1-4615-0181-7},
+	url = {http://link.springer.com/10.1007/978-1-4615-0181-7},
+	language = {en},
+	urldate = {2024-06-03},
+	publisher = {Springer US},
+	author = {Chen, Francis F. and Chang, Jane P.},
+	year = {2003},
+	doi = {10.1007/978-1-4615-0181-7},
+	file = {Chen_Chang_Plasma.pdf:C\:\\Users\\bramj\\Documents\\Ingenieur\\WIT\\MASTER_2\\Thesis\\Literatuur\\plasma\\Chen_Chang_Plasma.pdf:application/pdf},
+}
+
+@incollection{kilian_fully_2023,
+	address = {Cham},
+	title = {Fully {Kinetic} {Simulations}: {Semi}-{Lagrangian} {Particle}-in-{Cell} {Codes}},
+	isbn = {978-3-031-11870-8},
+	shorttitle = {Fully {Kinetic} {Simulations}},
+	url = {https://doi.org/10.1007/978-3-031-11870-8_6},
+	abstract = {This chapter will introduce the particle-in-cell method that connects Eulerian field quantities on a grid with the Lagrangian description of freely moving particles to simulate the evolution of a collisionless plasma. We motivate this description based on the Klimontovich and Maxwell equations, before explaining the basic building block in a numerical implementation. Advanced methods and their trade-offs are mentioned, and good references that contain explanations of implementation details are referenced. The chapter closes with an (incomplete) list of applications for which particle-in-cell codes have successfully been used.},
+	language = {en},
+	urldate = {2024-06-03},
+	booktitle = {Space and {Astrophysical} {Plasma} {Simulation}: {Methods}, {Algorithms}, and {Applications}},
+	publisher = {Springer International Publishing},
+	author = {Kilian, Patrick and Spanier, Felix},
+	editor = {Büchner, Jörg},
+	year = {2023},
+	doi = {10.1007/978-3-031-11870-8_6},
+	pages = {163--207},
+	file = {Full Text PDF:C\:\\Users\\bramj\\Zotero\\storage\\G9KD9HVW\\Kilian and Spanier - 2023 - Fully Kinetic Simulations Semi-Lagrangian Particl.pdf:application/pdf},
+}
+
+@article{arefiev_temporal_2015,
+	title = {Temporal resolution criterion for correctly simulating relativistic electron motion in a high-intensity laser field},
+	volume = {22},
+	issn = {1070-664X},
+	url = {https://doi.org/10.1063/1.4905523},
+	doi = {10.1063/1.4905523},
+	abstract = {Particle-in-cell codes are now standard tools for studying ultra-intense laser-plasma interactions. Motivated by direct laser acceleration of electrons in sub-critical plasmas, we examine temporal resolution requirements that must be satisfied to accurately calculate electron dynamics in strong laser fields. Using the motion of a single electron in a perfect plane electromagnetic wave as a test problem, we show surprising deterioration of the numerical accuracy with increasing wave amplitude a0 for a given time-step. We go on to show analytically that the time-step must be significantly less than λ/ca0 to achieve good accuracy. We thus propose adaptive electron sub-cycling as an efficient remedy.},
+	number = {1},
+	urldate = {2024-06-05},
+	journal = {Physics of Plasmas},
+	author = {Arefiev, Alexey V. and Cochran, Ginevra E. and Schumacher, Douglass W. and Robinson, Alexander P. L. and Chen, Guangye},
+	month = jan,
+	year = {2015},
+	pages = {013103},
+	file = {Full Text PDF:C\:\\Users\\bramj\\Zotero\\storage\\JF96NGLI\\Arefiev et al. - 2015 - Temporal resolution criterion for correctly simula.pdf:application/pdf;Snapshot:C\:\\Users\\bramj\\Zotero\\storage\\6PAABX9U\\Temporal-resolution-criterion-for-correctly.html:text/html},
+}
+
+@article{falgout_parallel_2014,
+	title = {Parallel {Time} {Integration} with {Multigrid}},
+	volume = {36},
+	issn = {1064-8275},
+	url = {https://epubs.siam.org/doi/10.1137/130944230},
+	doi = {10.1137/130944230},
+	abstract = {In this paper we develop a two-grid convergence theory for the parallel-in-time scheme known as multigrid reduction in time (MGRIT), as it is implemented in the open-source  package [XBraid: Parallel Multigrid in Time, http://llnl.gov/casc/xbraid].  MGRIT is a scalable and multilevel approach to parallel-in-time simulations that nonintrusively uses existing time-stepping schemes, and in a specific two-level setting it is equivalent to the widely known parareal algorithm.  The goal of this paper is twofold.  First, we present a two-level MGRIT convergence analysis for linear problems where the spatial discretization matrix can be diagonalized, and then apply this analysis to our two basic model problems, the heat equation and the advection equation.  One important assumption is that the coarse and fine time-grid propagators can be diagaonalized by the same set of eigenvectors, which is often the case when the same spatial discretization operator is used on the coarse and fine time grids.  In many cases, the MGRIT algorithm is guaranteed to converge, and we demonstrate numerically that the theoretically predicted convergence rates are sharp in practice for our model problems.  Second, we explore how the convergence of MGRIT compares to the stability of the chosen time-stepping scheme.  In particular, we demonstrate that a stable time-stepping scheme does not necessarily imply convergence of MGRIT, although MGRIT with FCF-relaxation always converges for the diffusion dominated problems considered here.},
+	number = {6},
+	urldate = {2024-06-05},
+	journal = {SIAM Journal on Scientific Computing},
+	author = {Falgout, R. D. and Friedhoff, S. and Kolev, Tz. V. and MacLachlan, S. P. and Schroder, J. B.},
+	month = jan,
+	year = {2014},
+	note = {Publisher: Society for Industrial and Applied Mathematics},
+	pages = {C635--C661},
+	file = {Full Text PDF:C\:\\Users\\bramj\\Zotero\\storage\\A78DHCIN\\Falgout et al. - 2014 - Parallel Time Integration with Multigrid.pdf:application/pdf},
+}
+
+@article{gonoskov_explicit_2024,
+	title = {Explicit energy-conserving modification of relativistic {PIC} method},
+	volume = {502},
+	issn = {0021-9991},
+	url = {https://www.sciencedirect.com/science/article/pii/S002199912400069X},
+	doi = {10.1016/j.jcp.2024.112820},
+	abstract = {The use of explicit particle-in-cell (PIC) method for relativistic plasma simulations is restricted by numerical heating and instabilities that may significantly constrain the choice of time and space steps. To partially eliminate these limitations we consider a possibility to enforce exact energy conservation by altering the standard time step splitting. Instead of updating particles in a given field and then the field using the current they produce, we consider subsystems that describe the coupling of a single particle and the field at the nearby nodes and solve them with enforced energy conservation sequentially for all particles, which is completed by the field update with zero current. Such an approach is compatible with various advances, ranging from accounting for additional physical effects to the use of numerical-dispersion-free field solvers, high-order weighting shapes and particle push subcycling. To facilitate further considerations and use, we provide a basic implementation in a 3D, relativistic, spectral code π-PIC, which we make publicly available. The method and its implementations are verified using simulations of cold plasma oscillations, Landau damping and relativistic two-stream instability. The capabilities of the method to deal with large time and space steps are demonstrated in the problem of plasma heating by intense incident radiation.},
+	urldate = {2024-06-05},
+	journal = {Journal of Computational Physics},
+	author = {Gonoskov, Arkady},
+	month = apr,
+	year = {2024},
+	keywords = {Energy conservation, Particle-in-cell (PIC), Plasma simulation},
+	pages = {112820},
+	file = {ScienceDirect Snapshot:C\:\\Users\\bramj\\Zotero\\storage\\GME52VVX\\S002199912400069X.html:text/html;Submitted Version:C\:\\Users\\bramj\\Zotero\\storage\\64N2A2GR\\Gonoskov - 2024 - Explicit energy-conserving modification of relativ.pdf:application/pdf},
 }

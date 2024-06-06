@@ -1,91 +1,193 @@
 \chapter{Introduction}
 \label{cha: intro}
-
-\pjd{enumerate equations as needed}
-
-
-This first chapter describes the background of the thesis as well as the goals and modus operandi. In section \ref{sec: intro plasma}, plasma is described, how it is formed and some of its characteristics. Different approaches to calculating the evolution of plasma are also briefly described. 
-These plasma dynamics can be described using differential equations, section \ref{sec: DE} therefore briefly gives some background on these equations and how they are traditionally solved. 
-This chapter ends with section \ref{sec: goals and approach} where the goals and methodology of the rest of the paper are presented.
+This thesis explores the effective implementation of particle-in-cell methods for plasma simulations on high-performance computing systems. To optimize the utilization of parallel hardware in these systems, we employ parallel-in-time techniques to achieve time domain parallelization. 
+This first chapter describes the background of the thesis as well as the goals and modus operandi. In section \ref{sec: intro plasma}, we give a brief overview of plasma: what it is, how it is formed and some of its characteristics. Different approaches to simulate the dynamics of plasma are also briefly described. 
+These plasma dynamics can be described using differential equations. Therefore, section \ref{sec: DE} briefly gives some background on differential equations and how they are traditionally simulated. 
+In the final part of this chapter, section \ref{sec: goals and approach}, we describe the goals and methodology of the rest of the paper.
 
 The rest of the thesis is subdivided into four other chapters. 
-In chapter \ref{cha: pic} special attention is given to particle-in-cell methods since these are the type of plasma simulation algorithm used in this work.  
-Parallel-in-time methods are introduced in chapter \ref{cha: pint}, which will be used to speed up the calculation of the chosen particle-in-cell method. 
-Chapter \ref{cha: methods and results} reports on the performed experiments. These will demonstrate desired properties such as speedup, accuracy and conservation of energy. 
-The final chapter \ref{cha:conclusion} contains the conclusions of this thesis.
+In chapter \ref{cha: pic}, special attention is given to particle-in-cell (PIC) methods since the chosen plasma simulation algorithm, namely the energy conserving semi-implicit method (ECSIM), is a PIC method.  
+We investigate the parallelisation in the time domain for the simulation of differential equations using parallel-in-time methods in chapter \ref{cha: pint}. Specifically, the parareal algorithm will be described in-depth. This algorithm is used to speed up the calculation of the ECSIM method. We give our methodology for our experiments in Chapter \ref{cha: methodology}. In Chapter \ref{cha: results} we seek to prove a correct serial implementation of our simulation techniques and under which conditions our parareal implementation gives correct results. We investigate accuracy in both the state variables and energy. Afterwards the performance aspects of the parareal implementation are investigated. These will demonstrate desired properties such as speedup, computational runtime and parallel efficiency. Finally, chapter \ref{cha: conclusion} contains the conclusions of our experiments and results.
 
 
 \section{Plasma}
 \label{sec: intro plasma}
-\color{red}
-Plasma is a state of matter separate from solid, fluid and gas, where the atoms or molecules have been excited to high enough energies that the electrons are being stripped away from the nuclei. In our daily lives, we might encounter plasma a couple of times, for example, in lightning or neon signs, but in space, it is the most common state for matter, making up about 99.9\% of the observable universe\cite{noauthor_plasma_nodate}. The sun, for example, is made out of plasma, and current research is trying to replicate the fusion that occurs in the sun's plasma to satisfy our energy demands \cite{degrave_magnetic_2022}.  
-\newline
-Plasma can be characterized in a couple of ways, one of which is its Debye length, $\lambda_D$. This value describes how the electric potential changes around a point charge:
-\[\varphi(x) = \varphi_0 e^{-\frac{x}{\lambda_D}}\]  
-This indicates that plasma creates a shield around any introduced local charges, as to minimise influence at large distances from this perturbation. If $n$ defines the density of the plasma, then the number of particles in a cube, whose sides are as long as the Debye length, is equal to $N_{D} = n \lambda_D^3$. This number, in turn, is used to calculate the plasma parameter $\Lambda = 6 \pi N_D^{\frac{2}{3}}$, which is a measure of the plasma coupling. If $N_D$ is small, there would only be a couple of particles nearby at each point in space. This means that if another particle gets closer or one of the present particles goes further, then the potential energy at that point would sharply increase or decrease, respectively. In this case, the electrostatic potential is dominant, and the trajectories of the species are \textbf{strongly} influenced by the interaction with close particles.
- A plasma with many particles in its Debye length is considered weakly coupled. In this case, the movements of many particles determine the electrostatic potential at each point in space. This means that whether one particle leaves or enters the area of influence does not impact the overall field much. Only the behaviour of the plasma at large matters since the individual particles only \textbf{weakly} impact each other. As a result, the trajectories of the species are, in fact, determined mostly by the kinetic energy of the particles.\cite{giovanni_lapenta_introduction_nodate}
-\newline
-A final characteristic is the plasma frequency, $\omega_{pe}$. It describes the frequency of plasma oscillations or Langmuir waves created when a cloud of electrons is displaced from its equilibrium position. Neglecting the influence of temperature and assuming immobile ions, it can be written as
- \[\omega_{pe} = \left(\frac{n_e q_e^2}{m_e\epsilon_0}\right)^{\frac{1}{2}}\]
- where $n_e$ is the density of electrons, $q_e$ is the charge and $m_e$ is the mass of an electron. The Langmuir waves are among the waves with the highest frequency and indicate how fast a plasma will react to disturbances.\cite{giovanni_lapenta_introduction_nodate}
+This thesis explores the simulation of plasma, which is often referred to as the fourth state of matter. Plasma occurs when the atoms or molecules in matter gain sufficient energy to strip electrons away from nuclei, creating charged particles. In our daily lives, plasma can be observed in a relatively small amount of scenarios, such as lightning or neon signs. However, it is the most common state of matter in space. Some estimate about 99\% of the observable universe is in a state of plasma \cite{chen_introduction_1984, longair_high_2011}. The sun, for example, is mainly made out of plasma, and current research is trying to replicate the fusion in the sun's core to satisfy our energy demands \cite{degrave_magnetic_2022}. Consequently, efficient and accurate simulations of these processes are the research aim of this thesis, as they can have a significant societal impact.
 
-\subsection{Time evolution approaches}
+\subsection{Fundamental Plasma Properties}
+\label{subsec: intro plasma characteristics}
+We first go over some fundamental properties of plasma. These can be used to characterize the plasma dynamics. 
+The first plasma property of importance is the \textbf{Debye length}, $\lambda_D$. This value describes how the electric potential, $\varphi(x)$, changes around a point charge
+\begin{equation}
+\label{eq: potential}
+    \varphi(x) = \varphi_0 e^{-\frac{x}{\lambda_D}}
+\end{equation} 
+where $\varphi_0$ is the electric potential at the point charge and $x$ is the distance to this charge. 
+Equation \ref{eq: potential} shows that plasma creates a ``shield'' around any introduced local charges to minimise influence at large distances from this perturbation. It shows that the influence of a disturbance drops off exponentially. The Debye length can be used to classify different types of plasma. 
+Consider a plasma with a particle density $n$ (number of particles per meter cubed). For this plasma, the number of particles in a cube with sides as long as the Debye length then equals $N_{D} = n \lambda_D^3$. We use the number of particles in this cube to compute the so-called \textbf{plasma parameter}
+\begin{equation}
+    \Lambda = 6 \pi N_D^{\frac{2}{3}}
+\end{equation}
+This plasma parameter is a measure of the \textbf{plasma coupling} and represents the ratio of the kinetic and electrostatic potential energy of the particles in the plasma. To see how $\Lambda$ affects the dynamics of the plasma, one can imagine such a cube in plasma. The number of particles in the Debye cube indicates how many particles would meaningfully influence the electric potential at the centre of the cube. This is due to the exponential drop-off relative to the Debye length. If the number of particles, $N_D$ (and as a result $\Lambda$), is large, many particles would influence the potential in the cube. This means that if another particle gets closer or one of the present particles goes further, the potential energy would barely increase or decrease, respectively. Each particle at any point in space only has a relatively small influence on the total electric potential. In this case, the kinetic energy is dominant, and the trajectories of the particles are weakly influenced by the interaction with other particles. These types of plasma are \textbf{weakly} coupled.
+ A plasma with only a few particles in its Debye length is considered \textbf{strongly} coupled. In this case, the movements of a few particles determine the electrostatic potential at each point in space. A particle leaving or entering the area of interest impacts the overall field significantly. As a result, the trajectories of the particles are determined mostly by the interactions with other particles \cite{chen_introduction_1984, chen_lecture_2003}.
+ 
+We describe one final characteristic: the \textbf{plasma frequency}, $\omega_{pe}$. This is the frequency of the so-called Langmuir waves, created when a cloud of electrons is displaced from its equilibrium position in the plasma. Neglecting the influence of temperature and assuming immobile ions, the plasma frequency can be computed as
+ \begin{equation}
+     \omega_{pe} = \left(\frac{n_e q_e^2}{m_e\epsilon_0}\right)^{\frac{1}{2}}
+ \end{equation}
+ where $n_e$ is the density of the electrons and $q_e$ and $m_e$ are the charge and mass of an electron, respectively. The Langmuir waves are among the waves with the highest frequency and indicate how fast plasma will react to disturbances. The Debye length can also be defined using the plasma frequency
+ \begin{equation}
+     \lambda_D = \frac{v_{th}}{\omega_{pe}}
+ \end{equation}
+ where $v_{th}$ is the thermal velocity of the particles 
+\cite{chen_introduction_1984, chen_lecture_2003}.
+
+\subsection{Modeling Approaches}
 \label{subsec: plasma approaches}
-Three different ways of calculating the state and evolution of plasma are described: the kinetic, fluid and particle-in-cell approaches. The kinetic description is very powerful at describing the evolution at the microscopic level. It gives a statistical view of the distribution of positions and velocities of the particles in the plasma. The Boltzmann equation states how this distribution can change in time due to external forces, diffusion and internal collisions:
-\[\diff{f(\textbf{x}(t), \textbf{v}(t),t))}{t} =\left(\diff{f}{t}\right)_{\mathrm{force}}+\left(\diff{f}{t}\right)_{\mathrm{diff}}+ \left(\diff{f}{t}\right)_{\mathrm{coll}}\]
-Where $\textbf{v}(t)$ and $\textbf{x}(t)$ represent the velocity and position at time $t$, respectively.
-$f(\textbf{x}(t), \textbf{v}(t),t))$ is the statistical distribution function of the plasma and has the property that $\int f(\textbf{x}(t),\textbf{v}(t),t)d\textbf{v} = n(\textbf{x}(t),t)$ where $n(\textbf{x}(t),t)$ is the density of the plasma in a box with sides of length $d\textbf{x}$ around $\textbf{x}(t)$. Using Liouville's theorem, however, it can be reduced to:\[\diff{f(\textbf{x}(t), \textbf{v}(t),t))}{t} = \left(\diff{f}{t}\right)_{\mathrm{coll}}\]
-Using Newton's laws of motion and expanding the derivative with forces from both gravity and the electromagnetic field gives:
-\[\diffp{f}{t} + \textbf{v} \diffp{f}{{\textbf{x}}} + \left( \frac{\textbf{F}}{m} + \frac{q}{m}(\textbf{E} + \textbf{v} \times \textbf{B})\right)\diffp{f}{{\textbf{v}}}= \left(\diff{f}{t}\right)_{\mathrm{coll}}\]
- $q$ represents the charge and $m$ the mass of the species in question.
-While this notation leads to accurate simulations at small scales, it can be prohibitively computationally expensive. Especially finding the $\left(\diff{f}{t}\right)_{\mathrm{coll}}$ term can require extensive knowledge about the problem. The latter problem is less of an issue in very weakly coupled systems since, in this case, the collision term can be set to 0, leading to the Vlasov equation.
-\newline The fluid approach seeks instead to describe the macroscopic behaviour of the plasma in terms of wave dynamics. The general form of the wave equation can be written as \[\psi(x,t) = \tilde{\psi}e^{-i\omega t + i k x}\] where $\psi$ is the desired quantity, k the wave number and $\omega$ the angular velocity, need to be found.
-\newline
-Although this representation is less computationally expensive, certain electrostatic phenomena can only be simulated by considering the evolution at a small scale \cite{biskamp_magnetic_2000}. Therefore, a simulation strategy must be found to simulate these large-scale phenomena while not explicitly resolving the small time scales. This can be done using the (semi-)implicit particle-in-cell, PIC, family of methods. \cite{giovanni_lapenta_introduction_nodate}
-\color{black}
+We now turn our attention to the simulation of plasma. We describe two main strategies for calculating the state and evolution of plasma: the kinetic and fluid approaches. 
+\subsubsection{Kinetic Approach}
+The kinetic approach is a powerful tool for describing the evolution at the microscopic level. It uses a statistical description of the distribution of positions and velocities of the particles in the plasma, $f(\textbf{x}(t), \textbf{v}(t),t)$. The statistical distribution function is defined such that $\int f(\textbf{x}(t),\textbf{v}(t),t)d\textbf{v} = n(\textbf{x}(t),t)$, where $n(\textbf{x}(t),t)$ is the density of the plasma in a cube with infinitesimal sides $d\textbf{x}$ around $\textbf{x}$ at time $t$. The \textbf{Boltzmann equation} describes the change in time of the distribution due to the velocity, $\textbf{v}$, acceleration, $\textbf{a}$, and internal collisions, $\left(\diff{f}{t}\right)_{\mathrm{coll}}$
+\begin{equation}
+\label{eq: Boltzmann}
+    \diffp{f}{t} + \textbf{v} \cdot \diffp{f}{{\textbf{x}}} + \textbf{a} \cdot \diffp{f}{{\textbf{v}}}= \left(\diff{f}{t}\right)_{\mathrm{coll}}
+\end{equation}
+where $\textbf{x}(t)$, $\textbf{v}(t)$ and $\textbf{a}(t)$ represent the position and velocity at time $t$, respectively. The plasmas considered in this thesis are only influenced by the \textbf{Lorentz force} exerted by the electromagnetic fields giving an acceleration of
+ \begin{equation}
+ \label{eq: Lorentz}
+     \textbf{a} = \frac{q}{m}\left(\textbf{E} + \frac{\textbf{v} \times \textbf{B}}{c}\right)
+ \end{equation}
+ where $\textbf{E}$ is the electric field, $\textbf{B}$ is the magnetic field and $m$ and $q$ are the mass and charge, respectively.
+ We replace this term in the Boltzmann equation to obtain
+\begin{equation}
+    \diffp{f}{t} + \textbf{v} \diffp{f}{{\textbf{x}}} + \frac{q}{m}\left( \textbf{E} + \frac{\textbf{v} \times \textbf{B}}{c}\right)\diffp{f}{{\textbf{v}}}= \left(\diff{f}{t}\right)_{\mathrm{coll}}
+\end{equation}
+While this notation leads to accurate simulations at small scales, it can be prohibitively computationally expensive. Especially finding an accurate representation of the $\left(\diff{f}{t}\right)_{\mathrm{coll}}$ term can require extensive knowledge about the problem. However, very weakly coupled systems can be considered collision-less and, as such, this collision term can be neglected, leading to the \textbf{Vlasov equation} \cite{A_Vlasov_1968}
+\begin{equation}
+\label{eq: vlasov}
+\diffp{f}{t} + \textbf{v} \diffp{f}{{\textbf{x}}} + \frac{q}{m}\left( \textbf{E} + \frac{\textbf{v} \times \textbf{B}}{c}\right)\diffp{f}{{\textbf{v}}}= 0
+\end{equation}
+The dynamics are thus an interaction between the electromagnetic fields and the charged particles. The field dynamics are described by the Maxwell equations
+\begin{align}
+    \label{eq: gauss}
+    \nabla \cdot \mathbf{E} &= 4 \pi \rho \\
+    \label{eq: gauss magnetic}
+	\nabla \cdot \mathbf{B} &= 0 \\
+ \label{eq: Faraday}
+	\nabla \times \mathbf{E} &= -\frac{1}{c}\frac{\partial \mathbf{B}}{\partial t} \\
+ \label{eq: Ampere}
+	\nabla \times \mathbf{B} &= \frac{1}{c}\left(4\pi \mathbf{J} + \frac{\partial \mathbf{E}}{\partial t}\right)
+\end{align}
+where we denote the charge density as $\rho$, and the current density as $\textbf{J}$. These values are defined by the position and velocity of the particles, showcasing the interplay between the particles and fields. We use \textbf{Gaussian units} for our electromagnetic formulas. These units absorb the permittivity and permeability present in the ISQ notation, simplifying the theoretical formulation while describing the same physics. 
+
+\subsubsection{Fluid Approach}
+The kinetic approach can accurately describe plasma dynamics at the microscopic level but can be prohibitively expensive to compute. In contrast, the fluid approach seeks to describe the macroscopic behaviour of the plasma in terms of wave dynamics. This approach treats the plasma as a liquid, assuming the discrete nature of the particles can be replaced by a continuous medium. This fluid must conserve the energy and mass of the system, as well as adhere to the momentum and induction equations. These equations regulate the interaction between the fluid and the electromagnetic field. Solutions of the fluid approach use the wave equation
+\[\psi(x,t) = \psi_0e^{-i\omega t + i k x}\] 
+where $\psi$ is a desired quantity (e.g. density, velocity,...), $k$ the wave number and $\omega$ the angular velocity 
+\cite{chen_introduction_1984, leveque_computational_1998}. These methods can be used to represent the evolution of the plasma on large temporal and spatial scales.
+
+\subsubsection{Particle-in-Cell}
+Although the fluid approach can be less computationally expensive, certain large-scale electrostatic phenomena can only be simulated by considering the dynamics at a microscopic scale, e.g. two-stream instability, Landau damping, etc. \cite{biskamp_magnetic_2000}. Therefore, it is desired to have a simulation strategy that can simulate these large-scale phenomena without explicitly resolving the small time scales. A family of methods that has these properties are the (semi-)implicit PIC methods \cite{markidis_multi-scale_2010}. PIC methods are the family of algorithms used to simulate plasma in this thesis. PIC algorithms are heavily based on the kinetic approach, relying on the Vlasov equation to describe the dynamics of plasma. However, it moves away from the statistical description, opting for a deterministic particle distribution sample of the distribution function. The movements of these particles are then simulated along with the generated fields. This means that a certain amount of statistical noise is introduced due to the finite number of particles. Due to its high correlation with the kinetic model, the microscopic phenomena can be simulated with high accuracy. PIC methods are also easily parallelisable, making them an excellent plasma simulation technique for this thesis. Further intricacies of these methods are explained in chapter \ref{cha: pic}. 
 
 
 \section{Differential Equations}
 \label{sec: DE}
-The equations that describe the dynamics of plasma are called differential equations. These are equations that describe the dynamics of a certain metric of interest compared to the evolution of another metric, often time or space. When the variable is only dependent on one metric, it is called an ordinary differential equation, ODE. A generalised ODE in function of $t$ can be written as 
+As seen in the previous section, plasma dynamics are described using a multitude of differential equations. Some of these have been extensively studied and solved analytically. However, even more do not (yet) have a known analytical solution or have been proven to not have analytical solutions. These differential equations have to be simulated numerically instead. Before we investigate how these are traditionally simulated, we start with general definitions and behaviours of differential equations.
+\subsection{Definitions and Behaviour}
+\label{subsec: continuous}
+A differential equation involves a state variable $\textbf{u}$ and its derivatives with respect to another variable. An ordinary differential equation (ODE) only depends on one variable and in this thesis we consider ODEs of the following form
 \begin{equation}
 \label{eq: ODE}
-    \frac{d \textbf{U}(t)}{d t} = \textbf{f}(\textbf{U}(t),t) \quad \text{with} \quad \textbf{U}(0) = \textbf{U}_0
+    \frac{d \textbf{u}(t)}{d t} = \textbf{f}(\textbf{u}(t),t) \quad \text{with} \quad \textbf{u}(0) = \textbf{u}_0
     \end{equation}
-where $\textbf{U}(t) \in \mathbb{R}^n$ is an n-dimensional state vector and $\textbf{f}(\textbf{U}(t), t)$ is an m-dimensional system of equations. Systems with higher-order derivatives can be transformed into a larger system with only first-order derivatives. For example the second-order differential equation
-\begin{equation*}
-    \frac{d^2 \textbf{x}(t)}{d t^2} = \textbf{a}(\textbf{x}(t),t) \quad \text{with} \quad \textbf{x}(0) = \textbf{x}_0, \quad \frac{d \textbf{x}(0)}{d t} = \textbf{v}_0
-\end{equation*}
-can be transformed into
-\begin{equation*}
-    \left\{ \begin{aligned} 
-      \frac{d \textbf{x}(t)}{d t} &= \textbf{v}(t) \\
-      \frac{d \textbf{v}(t)}{d t} &= \textbf{a}(\textbf{x}(t),t)
-    \end{aligned} \right.
-    \quad \text{with} \quad \textbf{x}(0) = \textbf{x}_0, \quad \textbf{v}(0) = \textbf{v}_0
-\end{equation*}
-where $\textbf{U}(t) = (\textbf{x}(t), \textbf{v}(t))$.
-
-In an even more general case, the variable of interest can depend on multiple parameters and only partial derivatives are given to each. An example is the diffusion equation
+where $\textbf{u}(t) \in \mathbb{R}^n$ is an n-dimensional state vector and $\textbf{f}(\textbf{u}(t), t)$ is a system of equations. 
+Differential equations can also be dependent on multiple variables with partial derivatives with respect to each. These are called partial differential equations (PDE). A PDE is said to be of order $n$ if it contains an $n$-th derivative with respect to one of its variables. Linear second-order PDEs have a special classification system since there are families of PDEs with typical behaviour. These are called \textbf{hyperbolic}, \textbf{parabolic} or \textbf{elliptic} PDEs. To classify linear second-order PDEs, we will look at a general description for a second-order PDE depending on two variables $x$ and $y$, where we denote a derivative as a subscript $\frac{\partial u}{\partial x} = u_x$, $\frac{\partial^2 u}{\partial x^2} = u_{xx}$:
 \begin{equation}
-\label{eq: general diffusion}
-    \frac{\partial \textbf{U}(\textbf{x},t)}{\partial t} = \nabla \cdot (a(\textbf{U}(\textbf{x},t),\textbf{x}) \nabla \textbf{U}(\textbf{x},t))
-    \end{equation}
-\color{red} Explain difference hyperbolic and parabolic systems \color{black}
-Since these equations occur frequently when describing systems, much research has been performed on them. While some can be solved analytically, the larger part must be solved using numerical methods. 
-Assume an ODE, depending on time, needs to be simulated from [0, T]. These methods traditionally divide the requested parameter range into $N + 1$ chunks, $0 = t_0 < t_1 < t_2 < \hdots < t_{N} = T$. It is then assumed that the functions $\textbf{f}(\textbf{U}(t),t)$ remain constant over these smaller parameter ranges. The smaller these steps are, the more they should approximate the continuous solution. The relation between finer steps and a more accurate solution is rarely one-to-one, but can often be approximated by a convergence ratio. For example, a convergence of $\mathcal{O}(\Delta t^2)$ indicates that one expects that if the distance between $t_i$ and $t_{i+1}$, $\Delta t$, is halved then the error compared to the actual solution is multiplied by $\frac{1}{2}^2$. The exponent in the convergence bound is used to classify the method, e.g. second-order accuracy. 
-In general, the solution at a time step $n$ can be written as
+\label{eq: pde classification}
+    A u_{xx}+2Bu_{xy}+Cu_{yy}+Du_x+Eu_y+F=0
+\end{equation}
+The classification of each family of equations is based on the factors $A$, $B$ and $C$:
+\begin{itemize}
+    \item $B^2 - AC < 0$: \textbf{Elliptic}; these equations are associated with equilibrium states. These typically have smooth solutions as initial conditions often smoothen out over time. The equilibrium of a PDE is considered to occur after any disturbance has settled throughout the entire domain. As a result, local perturbations in the initial conditions influence the solution of an elliptic equation in the whole domain at once.
+    \item $B^2 - AC = 0$: \textbf{Parabolic}; these equations are typical for diffusion. Sharp discontinuities in initial conditions are smoothed out due to the diffusion, which means these equations often have smooth solutions as well.
+    \item $B^2 - AC > 0$: \textbf{Hyperbolic}; these equations have a wave-like solution where information moves at a finite speed along multiple \textbf{characteristics}. The characteristics of a PDE are solution trajectories along which the PDE can be reduced to an ODE, meaning the derivative with respect to a variable can be set to 0.
+\end{itemize}
+We can use this classification system to classify the Maxwell equations. For this, we must rewrite the equations in their second-order form. For a second-order equation of the magnetic field, we start with the Ampere equation \ref{eq: Ampere}, take the curl of both sides and substitute with Gauss's law for magnetism \ref{eq: gauss magnetic} and the Faraday equation \ref{eq: Faraday}.
+\begin{align}
+    \nabla \times \mathbf{B} &= \frac{1}{c}\left(4 \pi\mathbf{J} + \frac{\partial \mathbf{E}}{\partial t}\right)\\
+    \nabla \times(\nabla \times \mathbf{B}) &= \frac{1}{c} \nabla \times \left(4 \pi\mathbf{J} + \frac{\partial \mathbf{E}}{\partial t}\right)\\
+    \nabla(\nabla \cdot \textbf{B}) - \nabla^2 \textbf{B} &= \frac{4 \pi}{c} \nabla \times \textbf{J} + \frac{1}{c} \frac{\partial}{\partial t} \left(\nabla \times \textbf{E}\right)\\
+    - \nabla^2 \textbf{B} &= \frac{4 \pi}{c} \nabla \times \textbf{J} - \frac{1}{c^2}\frac{\partial^2\textbf{B}}{\partial t^2}\\
+    - \nabla^2 \textbf{B} + \frac{1}{c^2}\frac{\partial^2\textbf{B}}{\partial t^2} - \frac{4 \pi}{c} \nabla \times \textbf{J}  &= 0
+\end{align}
+The same steps can also be used to get a second-order version of an electric field equation.
+\begin{align}
+    \nabla \times \mathbf{E} &= -\frac{1}{c}\frac{\partial \mathbf{B}}{\partial t}\\
+    \nabla \times(\nabla \times \mathbf{E}) &= -\frac{1}{c} \nabla \times \frac{\partial \mathbf{B}}{\partial t}\\
+    \nabla(\nabla \cdot \textbf{E}) - \nabla^2 \textbf{E} &= -\frac{1}{c} \frac{\partial}{\partial t} \left(\nabla \times \textbf{B}\right)\\
+    4\pi\nabla \rho- \nabla^2 \textbf{E} &= -\frac{1}{c^2} \left(4\pi\frac{\partial \textbf{J}}{\partial t} + \frac{\partial^2\textbf{E}}{\partial t^2}\right)\\
+    - \nabla^2 \textbf{E} + \frac{1}{c^2}\frac{\partial^2\textbf{B}}{\partial t^2} + \frac{4\pi}{c^2} \frac{\partial \textbf{J}}{\partial t} + 4\pi\nabla \rho &= 0
+\end{align}
+These equations show that the $A$ and $C$ of our classification equation \ref{eq: pde classification} are $-1$ and $1$ while $B$ is $0$. This classification indicates that the Maxwell equations are hyperbolic. It is well known that electromagnetic fields propagate as waves through space, which aligns with the anticipated wave-like behaviour of hyperbolic equations.
+
+\subsection{Numerical Simulation}
+We now discuss traditional techniques to numerically simulate differential equations. 
+\subsubsection{ODE}
+In the following section, we assume a one-dimensional ODE depending only on time. The ODE is simulated over the time domain, $t \in [0, T]$. One-step time integration methods traditionally divide the requested time range into $N + 1$ chunks, $0 = t_0 < t_1 < t_2 < \hdots < t_{N} = T$. It is then assumed that the system of functions, $f(U^n,t^n)$, remains constant over these smaller parameter ranges, where we refer to the numerical discretised solution of $u(t_n)$ as $U^n$. The smaller the time between steps, the more the discrete solution should approximate the continuous solution. However, the ratio between a smaller step size and the error of the solution is rarely exactly the same for any simulation, although it can often be approximated by a convergence ratio. For example, a convergence of $\mathcal{O}(\Delta t^2)$ indicates that one expects that if the distance between $t_i$ and $t_{i+1}$, referred to as the time step size $\Delta t$, is halved, then the error compared to the actual solution is multiplied by $\frac{1}{2}^2$. The exponent in the convergence bound is used to classify the method, so the described method would have a second-order accuracy. 
+
+In general, the solution of a method at a time step $n+1$ can be written as
 \[
-\textbf{U}_n = \sum_{i=0}^N a_i g(\textbf{U}_i,t_i)
+U^{n+1} = U^n + \Delta t \sum_{i=0}^N a_i f(U^i,t_i)
 \]
-Two main distinctions can be made based on which time points are needed for a method. Explicit methods only require previous time steps, meaning $i < n$. Implicit methods require solutions at later points in time. They both have their respective use cases. Explicit methods are, in general, faster than their implicit counterparts, but some can become unstable when large timesteps are used. Implicit methods on the other hand need to perform an iteration scheme to obtain their solution, but their solution will remain stable for any chosen timestep.
- 
+where the coefficients $a_i$ are determined by the method. 
+Two main distinctions can be made based on which time points are needed for a method. Explicit methods only require previous time steps, meaning $i < n+1$, which allows them to be calculated directly. Implicit methods need the solution at the requested time point, $i \le n+1$. This means a (non)-linear system of equations must be solved to obtain the solution at each time point. An example of a direct method is the forward Euler method
+\begin{equation}
+\label{eq: forward Euler}
+    U^{n+1} = U^n + \Delta t f(U^n,t_n)
+\end{equation}
+It is a first-order, direct one-step method. An example of an implicit method would be the backward Euler
+
+\begin{equation}
+\label{eq: backward Euler}
+    U^{n+1} = U^n + \Delta t f(U^{n+1},t_{n+1})
+\end{equation}
+Note that the derivative function $f(u(t), t)$ is sampled at the value $U^{n+1}$, which is the value that we are attempting to find and is typical for implicit methods. This is also a first-order method, an example of a second-order accurate method is the trapezoidal or Crank--Nicolson method
+\begin{equation}
+\label{eq: Crank-Nicolson}
+    U^{n+1} = U^n + \Delta t \frac{f(U^n,t_n) + f(U^{n+1},t_{n+1})}{2}
+\end{equation}
+It is both implicit and second-order.
+
+To indicate why one would choose the more expensive implicit methods, we must first explain a property of numerical integrators: the (linear) asymptotic stability.
+ The asymptotic stability of a method determines how the discretised solution to the differential equation behaves for a given time step size in comparison to the continuous original. It is typically investigated on the linear test equation
+\[\frac{du}{dt} = \lambda u\]
+The analytical solution for this equation is $u(t) = u_0 e^{\lambda t}$, meaning that it has an exponential decrease or increase in time depending on the sign of $\lambda$ (or is equal to 1 if $\lambda = 0$). 
+
+We consider the solution stable if it tends to 0 and therefore only consider $\lambda < 0$. A numerical integration of this ODE is considered unstable if its solution does not tend to 0. 
+Whether a method is unstable depends on the chosen time step size and $\lambda$, as well as the inherent properties of the used numerical method. 
+The stability of a method is often given by a linear asymptotic stability domain, which is represented by a division of the complex plane. It shows whether the discretisation of the test equation tends to 0 for each possible complex value of $\lambda \Delta t$. If these regions of stability include the entire left-hand plane, the method is called \textbf{A-stable}. This property can be very useful as it allows the choice of time step size to be fully determined by the desired accuracy of the solution instead of the validity of the solution. If a discrete method is unstable, while the continuous ODE is not, then the numerical method is simulating wrong dynamics, and thus, the solution is untrustworthy. 
+Some methods also include parts of the right-hand plane in their stability region. This means that the used discretisation makes unstable ODEs stable. This behaviour can be interesting for the simulation of unstable problems. However, it must be noted that the simulation does not model the dynamics of the underlying ODE in this case.
+
+Both explicit and implicit methods have respective applications. Explicit methods are generally faster than their implicit counterparts but can become asymptotically unstable when larger time step sizes are used. On the other hand, implicit methods need to solve a (non-)linear system to obtain their solution, but their solutions often have better stability properties. Most A-stable methods are implicit. Figure \ref{fig:stability-regions} shows the stability regions for the forward and backward Euler methods as well as Crank--Nicolson. 
+\begin{figure}
+    \centering
+    \includegraphics[width=1\linewidth]{images/plotting_stability.pdf}
+    \caption{Linear asymptotic stability regions of forward euler (left), backward euler (centre) and Crank--Nicolson (right). The stable region is red. }
+    \label{fig:stability-regions}
+\end{figure}
+If $\textbf{u(t)}$ is a multidimensional vector, it is also possible to treat some variables implicitly and some explicitly. Such methods are called semi-implicit. These methods often have improved stability properties while they can be calculated directly. 
+
+\subsubsection{PDE}
+Discretising PDEs introduces new intricacies due to the discretisation in both time and space. This often leads to the methods having a (possibly different) order of accuracy in both time and space separately. Users of these methods thus need to increase the accuracy of both the temporal and spatial grid concurrently to efficiently decrease the perceived error on the solution. Suppose, for example, that the current error on a solution is equal parts due to the spatial and temporal discretisation. If one were to halve the temporal error (for example, by halving the time step size for a first-order method), the perceived error on the final solution would only be a quarter smaller. In fact, even if the temporal error is fully removed, the spatial error would still represent half of the original error. As a result, it is advised to reduce the time step size along with the spatial grid size so that both errors are about equal.
+
+The asymptotic stability constraint of ODEs is also present for both the spatial and temporal grid sizes of discretized PDEs. Furthermore, explicit methods might suffer from the so-called Courant-Friedrichs-Lewy (CFL) condition \cite{courant_uber_1928}, which puts a restriction on the ratio between the time step size, $\Delta t$, and the grid cell size, $\Delta x$. The CFL condition often arises when discretizing hyperbolic equations, and when this condition is not respected, the solution becomes unstable as well. Implicit methods do not suffer from the CFL condition in terms of stability but can have reduced accuracy when the ratio between $\Delta t$ and $\Delta x$ is too large. An example of this is seen in Chapter \ref{cha: results}.  
+
+\subsubsection{Symplecticity}
+We also take the time to explain a specific type of discretisation called \textbf{symplectic} methods. These types of methods are very useful when simulating Hamiltonian systems. Hamiltonian systems have a quantity, called the Hamiltonian, which is constant along the trajectory of the solution, e.g. energy conservation for particle systems. Symplectic methods, unfortunately, do not conserve the Hamiltonian exactly. However, they do conserve the so-called symplectic structure of the system. Due to this structure the energy conservation over long time periods is bounded. Regular techniques, on the other hand, have no guarantees at all over how the Hamiltonian is preserved and often have an increasing error for longer time intervals. This makes symplectic methods interesting for the current thesis. It should be mentioned, however, that energy conservation can also be achieved without using symplectic methods, as simplicity is a richer structure than just energy\cite{giovanni_samaey_numerical_2022}.
 
 
 \section{Goals and Approach}
 \label{sec: goals and approach}
-The main goal of this thesis is an efficient implementation of a PIC method on a massively parallel computer system. Plasma simulations calculated using this method should have good energy-conserving properties. First, a PIC method will be selected, which incorporates the energy-conserving property. 
-Since much research has already been done on the parallelization in space for PIC methods, this work will focus on time parallelism. Different parallel-in-time methods will be investigated to choose a suitable algorithm. The PIC and PinT methods will then be combined and investigated to improve performance and energy-conserving properties.
+This thesis aims to explore efficient implementations of a PIC method on a massively parallel computer system. Our work focuses on parallelisation in time using the parareal algorithm outlined by Lions et al. (2001) \cite{lions_resolution_2001}. The chosen PIC method is the energy conserving semi-implicit method by Lapenta (2017) \cite{lapenta_exactly_2017}. By integrating parareal with ECSIM, we seek to enhance the computational efficiency of plasma simulations while setting user-defined bounds on the accuracy and energy error.
 
 
 %%% Local Variables: 

@@ -1,6 +1,6 @@
 \chapter{Parallel-in-Time methods}
 \label{cha: pint}
-This chapter investigates parallel-in-time methods. The focus is on parareal, a general scheme to parallelise the simulation of differential equations in time. This chapter first gives some background on the origin of parallel-in-time methods before reporting on parareal. Desired properties such as speedup and convergence are investigated, and section \ref{} describes other parallel-in-time methods with improved properties.
+This chapter investigates parallel-in-time methods. The focus is on parareal, a general scheme to parallelise the simulation of differential equations in time. This chapter first gives some background on the origin of parallel-in-time methods before reporting on parareal. Desired properties such as speedup and convergence are investigated, and section \ref{sec: parareal improvements} describes other parallel-in-time methods with improved properties.
 \section{Background}
 \label{sec: pint background}
 Current chip and computer design tends more and more towards parallel processing instead of increased clock frequency \cite{bautista_intel_nodate}. A couple of reasons holding back increased clock frequency are: 
@@ -9,15 +9,15 @@ Current chip and computer design tends more and more towards parallel processing
     \item increasing heat generation
     \item memory access is a bottleneck for faster calculations
 \end{itemize}
-. Therefore, modern chips and systems incorporate more processors instead of making a single, more powerful version. 
-Algorithms, however, need to take advantage of these extra processors. Solving differential equations has been extensively parallelised in the spatial domain \cite{adams_parallel_1999,du_expandable_2020}. Unfortunately, the parallel improvements are not infinite. Using more processors slows the calculations at a certain point due to the increasing communication overhead. Using extra cores to calculate solutions with increased spatial accuracy also has problems. For example, methods subject to the Courant-Friedrichs-Lewy (CFL) \cite{courant_uber_1928} condition would have to increase the accuracy in the time domain. This leads to more time steps that need to be simulated, possibly increasing the computational complexity. Most methods also have separate spatial and temporal accuracy. Even if the error in the spatial domain were to go to zero, the time domain would dominate the perceived error on the solution. These reasons should demonstrate that it is desirable to also parallelise differential equations in the time domain. 
+Therefore, modern chips and systems incorporate more processors instead of making a single, more powerful version. 
+Algorithms, however, need to take advantage of these extra processors. Solving differential equations has been extensively parallelised in the spatial domain \cite{adams_parallel_1999,du_expandable_2020}. Unfortunately, the parallel improvements are not infinite. Using more processors slows the calculations at a certain point due to the increasing communication overhead. Using extra cores to calculate solutions with increased spatial accuracy also has problems. For example, methods subject to the CFL condition would have to increase the accuracy in the time domain. This leads to more time steps that need to be simulated, possibly increasing the computational complexity. Most methods also have separate spatial and temporal accuracy. Even if the error in the spatial domain were to go to zero, the time domain would dominate the perceived error on the solution. These reasons should demonstrate that it is desirable to also parallelise differential equations in the time domain. 
 
 The following sections assume an ODE as in equation \ref{eq: ODE}, dependent on time and simulated on $[0, T]$.
 This range can be discretized into $N + 1$ time points $0 = t_0 < t_1 < t_2 < \hdots < t_{N} = T$. A constant distance between time points is assumed for the rest of this work, $\Delta t = t_{i+1} - t_i = \frac{T}{N}$.
 
 \section{Parareal}
 \label{sec: parareal}
-A wellknown parallel-in-time method is parareal \cite{lions_resolution_2001,gander_analysis_2014,d_samaddar_parallelization_2010}. It can be derived in multiple ways and is, in essence, a predictor-corrector scheme. Its convergence properties are excellent for parabolic PDEs \cite{gander_analysis_2007}. Unfortunately, the convergence for the hyperbolic case can be a lot less impressive, although even chaotic systems have been solved using it \cite{d_samaddar_parallelization_2010}. The algorithm uses a coarse solver, $\textbf{G}$, and a fine solver, $\textbf{F}$. These solvers use the known solution at time $t_n$ to calculate the solution at time $t_{n+1}$ 
+A well-known parallel-in-time method is parareal \cite{lions_resolution_2001,gander_analysis_2014,d_samaddar_parallelization_2010, bal_symplectic_2008}. It resembles a standard predictor-corrector scheme, where a rough prediction of the solution is iteratively improved. Its convergence properties have been studied and it has been found to be best suited for parabolic PDEs \cite{gander_analysis_2007}. Unfortunately, the convergence for the hyperbolic case can be a lot less impressive, although even chaotic systems have been solved using it \cite{d_samaddar_parallelization_2010}. The algorithm uses a coarse solver, $\textbf{G}$, and a fine solver, $\textbf{F}$. These solvers use the known solution at time $t_n$ to calculate the solution at time $t_{n+1}$ 
 \[\textbf{G}(\textbf{U}_n, t_n, t_{n+1}) = \textbf{U}_{n+1}, \quad
 \textbf{F}(\tilde{\textbf{U}}_n, t_n, t_{n+1}) = \tilde{\textbf{U}}_{n+1}
 \]
@@ -30,7 +30,7 @@ Intuitively, it is clear that the required number of iterations, $K$, should be 
 
 \subsection{Speedup and Parallel Efficiency}
 The speedup and parallel efficiency equations for parareal demonstrate the importance of reducing the number of iterations. We represent the cost of communication between processors by $C_\mathrm{comm}$. In distributed memory systems, communication could consist of scattering before the parallel section and gathering afterwards. For shared memory systems, communication would be the accessing of memory.
-The computational cost of performing $\textbf{F}(\textbf{U}_n, t_n, t_{n+1})$ is represented as $\gamma_F$, while the time cost of the coarse version $\textbf{G}(\textbf{U}_n^k, t_n, t_{n+1})$ is $\gamma_G$. Assuming $p$ processors are used, the time required for the serial and parareal solutions can be described.
+The computational cost of performing $\textbf{F}(\textbf{U}_n, t_n, t_{n+1})$ is represented as $\gamma_F$, while the time cost of the coarse version $\textbf{G}(\textbf{U}_n^k, t_n, t_{n+1})$ is $\gamma_G$. Assuming $p$ processors are used, the time required for the serial and parareal solutions can be described as
 \begin{equation}
 \begin{split}
     T_{\mathrm{serial}} &= N \gamma_F\\
@@ -54,48 +54,60 @@ While the speedup is often used as a metric, it can misrepresent the performance
     &= \frac{1}{K\left[1+\frac{p}{N \gamma_F} C_\mathrm{comm} + p(\frac{1}{K} + 1)\frac{\gamma_G}{\gamma_F}\right]}
 \end{split}
 \end{equation}
-This formula gives a quantitative meaning to the intuition behind parareal. There are two main strategies to increase performance. On one hand, the fine integrator should be expensive, while the coarse solver should be as cheap as possible. However, the efficiency is still bounded by $\frac{1}{K}$. Thus, any change in solvers that increases the required iterations should be investigated for actual improvements in parallel efficiency.
-\subsection{Convergence}
+This formula gives a quantitative meaning to the intuition behind parareal. On one hand, the fine integrator should be expensive, while the coarse solver should be as cheap as possible. However, the efficiency will always be bounded by $\frac{1}{K}$. Thus, any change in solvers that increases the required iterations should be investigated for actual improvements in parallel efficiency. We note that the cost of initialisation is usually amortized by the number of iterations and thus will penalize the speedup when a small number of iterations is achieved.
 
-The fine solver also ensures that at iteration $k$, all coarse timesteps up until $t_k$ are converged. Convergence is defined when the relative state changes are smaller than some tolerance $\epsilon_{tol}$:\[\max_{n=0...N}\left|\frac{\textbf{U}^{k+1}_n -\textbf{U}^{k}_n}{\textbf{U}^{k}_n} \right| < \epsilon_{tol}\]
+\subsection{Stopping Condition}
+As parareal is an iterative method, a stopping condition must be defined to decide when the solution has converged. If the number of parareal iterations is equal to the number of coarse time steps, the fine integrator will have propagated its solution throughout the entire time domain. Due to this, the maximal amount of iterations needed is bounded by the number of time steps. However, as stated before, this would give abysmal speedup and should thus be avoided. There are multiple choices as to how convergence is tested. In this thesis, convergence is assumed when the relative state changes are smaller than some tolerance $\epsilon_{tol}$
+\[\max_{n=0...N}\left|\frac{\textbf{U}^{k+1}_n -\textbf{U}^{k}_n}{\textbf{U}^{k+1}_n} \right| < \epsilon_{tol}\]
+In the context of energy conservation one could also decide to assume convergence when the relative error on the energy is below the given tolerance. We show in chapter \ref{cha: results} that the error on the energy is bounded by the state error, making the latter a better test. As a result, we decide to test against the error on the state variables.
 
 \subsection{Energy Conservation}
-It is known that parareal does not conserve energy exactly for arbitrary length time intervals, especially for chaotic systems \cite{}.
+It is known that parareal does not conserve energy exactly for arbitrary length time intervals even if energy conserving methods are chosen for the coarse and fine integrator \cite{gander_analysis_2014}. As a result we do not concern ourselves with exact energy conservation over the time interval when using parareal. We do, however, show that bounds can be set on the error of the energy.
+
+\subsection{Time Scaling}
+Assume a time interval must be simulated $t \in [0, T]$ with a given coarse time step size $\Delta t$. In the best case scenario, the number of available cores $p$ is equal to the fraction $\frac{T}{\Delta t}$. This will ensure that each call to the fine solver can be executed in full parallelism. In systems with fewer resources, however, it might occur that the fraction $\frac{T}{\Delta t}$ is larger than the available number of cores. In such cases, there are two main strategies to perform the parareal simulation. One can perform one parareal solve on the larger time frame, meaning processors will compute multiple fine integrator steps in serial, thus reducing the speedup in the parallel section. On the other hand, it is also possible to split up the time interval into $m$ chunks, for which $\frac{T}{m \Delta t} \le p$. Parareal is then performed multiple times in serial on each chunk. When to use which strategy is highly dependent on the discrepancy between $p$ and $\frac{T}{\Delta t}$ and the convergence of parareal on the given problem. D. Sammadar et al. (2010) \cite{d_samaddar_parallelization_2010} found that parareal has a convergence behaviour dependent on the iteration number. The number of time steps that converge each parareal iteration increases along with the iteration number. Typically, only one time step converges each iteration when the number of iterations is small, reminiscent of a ``booting up'' sequence. D. Sammadar et al. found the number of converging time steps to rise linearly until a maximum is obtained. This behaviour suggests that restarting the parareal algorithm multiple times on smaller time intervals might thus be harmful to the overall computational runtime. 
+
 \section{Improvements}
+\label{sec: parareal improvements}
+The fame, along with the apparent shortcomings of parareal, have led to improvements in the method. We briefly introduce two methods that improve on the traditional parareal algorithm in different aspects. We also list why we do not use them in the current thesis.
 \subsection{PFASST}
 \label{subsec: intro pfasst}
-Numerous methods have been developed using parareal as their basis. One is the Parallel Full Approximation Scheme in Space and Time \cite{emmett_toward_2012}, PFASST. Instead of accepting any black box time advancers $\textbf{G}$ and $\textbf{F}$, it requires the use of Spectral Deferred Corrections, SDC \cite{dutt_spectral_2000}, for its solvers. 
-\newline
-The integration of the differential equation from subsection \ref{subsec:pint background} can be written using the following Picard equation:\[
-	\textbf{u}(t) = \textbf{u}_0 + \int^t_0 \textbf{f}(\tau,\textbf{u}(\tau))\tau
-\]
-Assuming an approximation of the real solution $\textbf{u}^k(t)$ is given, the error, $\delta^k(t)$, and residual, $\varepsilon^k(t)$, can be defined as:\[
-	\delta^k(t) = \textbf{u}(t) - \textbf{u}^k(t), \quad
-	\varepsilon^k(t) = \textbf{u}_0 + \int^t_0 \textbf{f}(\tau,\textbf{u}^k(\tau))\tau - \textbf{u}^k(t)
-\]
-SDC solves the initial differential equation by injecting $M$ Gaussian nodes in each of the $N$ time sections and then iteratively improving $\textbf{u}^k(t)$. Essentially, it solves $N$ IVPs in succession. This leads to continuous approximations, $\textbf{u}^{k}(t)$, on each section after every iteration, where the continuous approximations are always Lagrange polynomials through the Gaussian nodes. The updates are performed by approximating the residual and using this to calculate the error, which then gets subtracted from the approximate solution. 
-The PFASST algorithm can achieve parallel efficiencies bounded by $\frac{K_{SDC}}{K_{parareal}} $, meaning the ratio between the iterations needed by the SDC solver against the number of parareal iterations. As the name suggests it also uses the Full Approximation Scheme, FAS \cite{brandt_multi-level_1976}.
-\newline
-Assume an approximation $v^f$ is found on a fine scale, so that $u^f = v^f + e^f$, where $u^f$ solves:
-\[A^f(u^f) = g^f\]
-Taking the coarse problem to be equal to:
-\[A^c(v^c + e^c)  - A^c(v^c) = r^c\]
-where $r^c = I_f^c(r^f) = I_f^c(g^f - A^f(v^f))$ is the residual of the coarsened problem. If $v^c$ is then also defined as the coarsened $v^f$, then the substituted coarse residual can be rewritten as:\[
-A^c(I_f^c(v^f) + e^c) = A^c(I_f^c(v^f)) + I_f^c(g^f - A^f(v^f))\]
-The right hand side can be calculated and the resulting system can be solved to find a solution $u^c$. If the error of this solution is calculated as $e^c = u^c - I_f^c(v^f)$, then the interpolated error can be used to update the fine grid approximate solution $v^f \leftarrow v^f + I_c^f(e^c)$
-\cite{henson_multigrid_2003}
-\newline
-FAS allows PFASST to use the coarse solver to calculate better and more efficient fine SDC solver solutions. 
+The first method is the Parallel Full Approximation Scheme in Space and Time \cite{emmett_toward_2012} method, PFASST. It encapsulates parallelisation in both time and space for maximal speedup. Instead of accepting any black box time integrators $\textbf{G}$ and $\textbf{F}$, it requires the use of Spectral Deferred Corrections (SDC) \cite{dutt_spectral_2000}, for its solvers. SDC is a spectral predictor-corrector scheme, where the integral of the differential equation is iteratively approximated using injected Gaussian nodes. The SDC iterations performed in the coarse integrator can actually speed up and improve the fine SDC integration through the use of the Full Approximation Scheme (FAS) \cite{brandt_multi-level_1976}. FAS is a multigrid method which is used to correct solutions at fine scales based on calculated errors on coarser scales \cite{henson_multigrid_2003}.
 
-\subsection{Symplectic parareal}
+% The integration of the differential equation \ref{eq: ODE} can be written using the following Picard equation:\[
+% 	\textbf{u}(t) = \textbf{u}_0 + \int^t_0 \textbf{f}(\tau,\textbf{u}(\tau))\tau
+% \]
+% Assuming an approximation of the real solution $\textbf{u}^k(t)$ is given, the error, $\delta^k(t)$, and residual, $\varepsilon^k(t)$, can be defined as:\[
+% 	\delta^k(t) = \textbf{u}(t) - \textbf{u}^k(t), \quad
+% 	\varepsilon^k(t) = \textbf{u}_0 + \int^t_0 \textbf{f}(\tau,\textbf{u}^k(\tau))\tau - \textbf{u}^k(t)
+% \]
+% SDC solves the initial differential equation by injecting $M$ Gaussian nodes in each of the $N$ time sections and then iteratively improving $\textbf{u}^k(t)$. Essentially, it solves $N$ IVPs in succession. This leads to continuous approximations, $\textbf{u}^{k}(t)$, on each section after every iteration, where the continuous approximations are always Lagrange polynomials through the Gaussian nodes. The updates are performed by approximating the residual and using this to calculate the error, which then gets subtracted from the approximate solution. 
+
+% As the name suggests it also uses the Full Approximation Scheme, FAS \cite{brandt_multi-level_1976}.
+% \newline
+% Assume an approximation $v^f$ is found on a fine scale, so that $u^f = v^f + e^f$, where $u^f$ solves:
+% \[A^f(u^f) = g^f\]
+% Taking the coarse problem to be equal to:
+% \[A^c(v^c + e^c)  - A^c(v^c) = r^c\]
+% where $r^c = I_f^c(r^f) = I_f^c(g^f - A^f(v^f))$ is the residual of the coarsened problem. If $v^c$ is then also defined as the coarsened $v^f$, then the substituted coarse residual can be rewritten as:\[
+% A^c(I_f^c(v^f) + e^c) = A^c(I_f^c(v^f)) + I_f^c(g^f - A^f(v^f))\]
+% The right hand side can be calculated and the resulting system can be solved to find a solution $u^c$. If the error of this solution is calculated as $e^c = u^c - I_f^c(v^f)$, then the interpolated error can be used to update the fine grid approximate solution $v^f \leftarrow v^f + I_c^f(e^c)$
+% \cite{henson_multigrid_2003}
+% \newline
+% FAS allows PFASST to use the coarse solver to calculate better and more efficient fine SDC solver solutions. 
+
+The PFASST algorithm improves the parallel efficiency of parareal. Its parallel efficiency is bounded by the ratio between the iterations needed by the SDC solver against the number of parareal iterations, $\frac{K_{SDC}}{K_{parareal}}$. While the theoretical parallel efficiency of PFASST can be better than the traditional parareal implementation, it requires the use of the SDC method in the used fine and coarse integrators. As ECSIM instead uses one-step methods based on finite differences, the base ECSIM method would have to be adapted to use the SDC method. This was considered to be outside of the scope of this thesis.
+
+\subsection{Symplectic Parareal}
 \label{subsec: intro symplectic parareal}
-Certain problems have certain quantities that should be conserved, in these cases a symplectic method is preferred. This can be done using the symplectic parareal method \cite{bal_symplectic_2008}. If the actual solution $u(t + \Delta t)$ can be found as $f(u(t),t)$, then the original parareal scheme uses a discretized version $f_{\Delta}$ to perform the following predictor-corrector scheme $f = f_\Delta + (f - f_\Delta)
-$. The symplectic version, instead, assumes the following solution $f = \psi_\Delta \circ f_\Delta$. This is due to the property that the composition of symplectic maps is also symplectic. So if both $f_\Delta$ and $\psi_\Delta$ are symplectic, the parareal iteration will be too. The function $\psi_\Delta$ is practically implemented through an interpolation scheme, where care is taken to make it symplectic. This is done using \textit{generating functions} \cite{hairer_geometric_2006}.  $\psi_\Delta$ is actually an approximation of the identity function of order one higher than the order of $f_{\Delta}$. Due to this \cite{hairer_geometric_2006}, a generating function can be found of the form $S(\textbf{q}^*, \textbf{p}) = \textbf{q}^* \textbf{p} + \gamma(\textbf{q}^*, \textbf{p})$, where it is assumed that $u(t) = (\textbf{q},\textbf{p})$, $(\textbf{q}^*, \textbf{p}^*) = \psi_\Delta(\textbf{q},\textbf{p})$ and $\gamma$ is a mapping from $\mathbb{R}^{2d}$ to $\mathbb{R}$. If the following equations are satisfied:
-\[\textbf{q}^* = \textbf{q} - \diffp{\gamma}{{\textbf{p}}}(\textbf{q}^*, \textbf{p}), \quad 
-	\textbf{p}^* = \textbf{p} + \diffp{\gamma}{{{\textbf{q}^{*}}}}(\textbf{q}^*, \textbf{p})\]
-Then an interpolation of $\gamma$ through the $N$ points $(f_\Delta(U^1_n),\psi_\Delta(f_\Delta(U^1_n)))$ will be symplectic. If enough points are used, then this interpolation will also serve as an interpolation of $\psi_\Delta$\cite{bal_symplectic_2008}.
+The symplectic parareal method improves on the traditional parareal algorithm by conserving the symplectic structure of PDEs \cite{bal_symplectic_2008}. If the exact solution $u(t + \Delta t)$ can be found as $g(u(t),t)$, then the original parareal scheme uses a discretized version $g_{\Delta}$ to perform the following predictor-corrector scheme $g = g_\Delta + (g - g_\Delta)$ The symplectic version, instead, assumes the following solution $f = \psi_\Delta \circ f_\Delta$. It uses the property of symplectic maps that the composition of symplectic maps is also symplectic. 
+% So if both $f_\Delta$ and $\psi_\Delta$ are symplectic, the parareal iteration will be too. The function $\psi_\Delta$ is practically implemented through an interpolation scheme, where extra care is taken to make it symplectic. This is done using \textit{generating functions} \cite{hairer_geometric_2006}.  $\psi_\Delta$ is actually an approximation of the identity function of order one higher than the order of $f_{\Delta}$. Due to this \cite{hairer_geometric_2006}, a generating function can be found of the form $S(\textbf{q}^*, \textbf{p}) = \textbf{q}^* \textbf{p} + \gamma(\textbf{q}^*, \textbf{p})$, where it is assumed that $u(t) = (\textbf{q},\textbf{p})$, $(\textbf{q}^*, \textbf{p}^*) = \psi_\Delta(\textbf{q},\textbf{p})$ and $\gamma$ is a mapping from $\mathbb{R}^{2d}$ to $\mathbb{R}$. If the following equations are satisfied:
+% \[\textbf{q}^* = \textbf{q} - \diffp{\gamma}{{\textbf{p}}}(\textbf{q}^*, \textbf{p}), \quad 
+% 	\textbf{p}^* = \textbf{p} + \diffp{\gamma}{{{\textbf{q}^{*}}}}(\textbf{q}^*, \textbf{p})\]
+% Then an interpolation of $\gamma$ through the $N$ points $(f_\Delta(U^1_n),\psi_\Delta(f_\Delta(U^1_n)))$ will be symplectic. If enough points are used, then this interpolation will also serve as an interpolation of $\psi_\Delta$\cite{bal_symplectic_2008}.
 
-\color{black}
+The symplectic structure can help to bound the error on energy on longer time frames. In a conversation with Dr. Martin Gander during the PinT 2024 Workshop on February 8, 2024, it was mentioned that the symplectic parareal version is very expensive to calculate. Due to this, large speedup is hard to obtain. As we do not concern ourselves with exact energy conservation, we decide not to use this more expensive version of parareal. We show in Chapter \ref{cha: results} that reasonable bounds on the energy error can also be obtained using tolerances on the state variables.
+
 
 %%% Local Variables: 
 %%% mode: latex

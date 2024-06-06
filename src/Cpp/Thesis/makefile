@@ -13,7 +13,7 @@ SRCS = $(wildcard $(SRCDIR)/*.cpp)
 HDR = $(wildcard $(INCDIR)/*.h)
 TSTH = $(wildcard $(TESTDIR)/*.h)
 
-all: test test3D testSub testCoarsen testStep
+all: test CNConvtest ECSIM1DConvtest ECSIM3DConvtest ECSIM3DSim ECSIMConvtest
 
 # Rule to build the target executable
 % : $(SRCDIR)/%.cpp $(HDR) $(TSTH)
