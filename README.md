@@ -6,6 +6,7 @@ Master thesis of Bram Leys written during the Master in Mathematical Engineering
 - [Usage](#usage)
 - [Dependencies](#dependencies)
 - [Sources](#sources)
+- [License](#license)
 - [Contact](#contact)
 
 ## Installation
@@ -28,7 +29,7 @@ make testCoarseStep
 
 ## Dependencies
 ### C++
-  The project depends on the Eigen library ([https://eigen.tuxfamily.org](https://eigen.tuxfamily.org)) and is written for C++20 with OpenMP support.
+  The project depends on the Eigen library ([https://eigen.tuxfamily.org](https://eigen.tuxfamily.org)), which is licensed under MPL2, and is written for C++20 with OpenMP support.
 ### Python
   The external libraries used are Numpy ([https://numpy.org](https://numpy.org)) for linear algebra, Scipy ([https://scipy.org](https://scipy.org)) for sparse linear algebra and Matplotlib ([https://matplotlib.org/](https://matplotlib.org/)).
 
@@ -47,6 +48,9 @@ Society for Industrial and Applied Mathematics.
   - Youcef Saad, Martin H. Schultz. GMRES: A Generalized Minimal Residual
 Algorithm for Solving Nonsymmetric Linear Systems | SIAM Journal on Scientific
 Computing, 1986.
+
+## License
+This software is licensed under MPL2.
 
 ## Contact
   Email: bram.leys@student.kuleuven.be
