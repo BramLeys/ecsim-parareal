@@ -9,28 +9,28 @@ using namespace Eigen;
 namespace TestProblems {
     // 1D-3V
     int SetTransverse(ArrayXd& xp, Array3Xd& vp, Array3Xd& E0, Array3Xd& Bc, ArrayXd& qp, int Nx = 128, int Np = 10000, double L = 2 * EIGEN_PI) {
-        double dx = L / Nx; 
-        double Vx = pow(dx, 1); // volumes of each of the grid cells (need regular grid)
-        double mode = 3;    // mode of perturbation sin
-        double VT = 0.01; // thermic velocity of particles in each direction
-        double V0 = 0.8;
-        double V1 = .1 * V0 * 0;
+        double dx = L / Nx; // grid cell size
+        double Vx = pow(dx, 1); // volume of each of the grid cells
+        double VT = 0.01; // thermal velocity of particles in each direction
+        double V0 = 0.8; // average absolute velocity of each beam
 
-        xp = ArrayXd::LinSpaced(Np, 0, L - L / Np);
-        vp = (VT * Array3Xd::Random(3, Np));
-        E0 = Array3Xd::Ones(3, Nx)/10;//initialization of electric field in each of the grid cells
-        //E0 = Array3Xd::Zero(3, Nx);
-        Bc = Array3Xd::Zero(3, Nx);
-        Bc.row(0) = ArrayXd::Ones(Nx) / 10;
-
+        xp = ArrayXd::LinSpaced(Np, 0, L - L / Np); // particles are equispaced in space
+        vp = (VT * Array3Xd::Random(3, Np)); // particles are part of counterstreaming beams in y-direction with random variation defined by thermal velocity in each direction
         ArrayXd pm = 1 + ArrayXd::LinSpaced(Np, 0, Np - 1);
         pm = 1 - 2 * mod(pm, 2).cast<double>();
-        vp.row(1) += pm * V0 + V1 * (2 * EIGEN_PI * xp / L * mode).sin();
+        vp.row(1) += pm * V0;
 
-        ArrayXi ix = (xp / dx).floor().cast<int>(); // cell of the particle, first cell is cell 0, first node is 0 last node Nx
-        ArrayXd frac1 = 1 - (xp / dx - ix.cast<double>()); // W_{pg}
+        E0 = Array3Xd::Ones(3, Nx)/10;// initialization of electric field in each of the grid cells
+        Bc = Array3Xd::Zero(3, Nx);
+        Bc.row(0) = ArrayXd::Ones(Nx) / 10; // initialization of magnetic field in each of the grid cells
+
+
+        ArrayXi ix = (xp / dx).floor().cast<int>(); // cell of each particle
+        ArrayXd frac1 = 1 - (xp / dx - ix.cast<double>()); // first cell of influence due to interpolation function
         ArrayXi ix2 = mod((ix + 1), Nx).cast<int>(); // second cell of influence due to extended local support of first order b-spline
 
+
+        // Moment gathering
         std::vector<Triplet<double>> tripletList(Np * 4);
         #pragma omp parallel for shared(tripletList)
         for (int ip = 0; ip < Np; ip++) {
@@ -42,6 +42,7 @@ namespace TestProblems {
         SparseMatrix<double> M(Nx, Nx);
         M.setFromTriplets(tripletList.begin(), tripletList.end());
 
+        // computing the charge of each particle so that a constant charge density is obtained
         VectorXd rhotarget = -VectorXd::Ones(Nx) * Vx;
         SparseLU<SparseMatrix<double>> solver;
         solver.compute(M);
@@ -57,34 +58,36 @@ namespace TestProblems {
             return 1;
         }
 
-        qp = rhotildeV.array()(ix) * frac1 + rhotildeV.array()(ix2) * (1 - frac1);
+        qp = rhotildeV.array()(ix) * frac1 + rhotildeV.array()(ix2) * (1 - frac1); // Charge of each particle
         return 0;
     }
 
     // 1D-1V
     int SetTwoStream(ArrayXd& xp, ArrayXd& vp, ArrayXd& E0, ArrayXd& Bc, ArrayXd& qp, int Nx = 128, int Np = 10000, double L = 2 * EIGEN_PI) {
-        double dx = L / Nx;
-        double Vx = pow(L / Nx, 1); // volumes of each of the grid cells (need regular grid)
-        double mode = 5;    // mode of perturbation sin
-        double VT = 0.01; // thermic velocity of particles in each direction
-        double V0 = 0.2;
-        double V1 = .1 * V0;
+        double dx = L / Nx;// grid cell size
+        double Vx = pow(L / Nx, 1); // volume of each of the grid cells
+        double VT = 0.01; // thermal velocity of particles in each direction
+        double V0 = 0.2; // average absolute velocity of each beam
+        double mode = 5;    // mode of perturbation sine used to induce instability
+        double V1 = .1 * V0; // amplitude of perturbation sine
 
         xp = ArrayXd::LinSpaced(Np, 0, L - L / Np);
-        vp = (VT * ArrayXd::Random(Np));
-        E0 = ArrayXd::Zero(Nx);//initialization of electric field in each of the grid cells
-        Bc = ArrayXd::Ones(Nx) / 10;
-
+        vp = (VT * ArrayXd::Random(Np)); // particles are part of counterstreaming beams with random variation defined by thermal velocity
         ArrayXd pm = 1 + ArrayXd::LinSpaced(Np, 0, Np - 1);
         pm = 1 - 2 * mod(pm, 2).cast<double>();
         vp += pm * V0;
+        vp += V1 * (2 * EIGEN_PI * xp / L * mode).sin(); // perturb the velocity distribution to induce desired instability mode
 
-        vp += V1 * (2 * EIGEN_PI * xp / L * mode).sin();
+        E0 = ArrayXd::Zero(Nx); //initialization of electric field in each of the grid cells
+        Bc = ArrayXd::Ones(Nx) / 10; // initialization of magnetic field in each of the grid cells
 
-        ArrayXi ix = (xp / dx).floor().cast<int>(); // cell of the particle, first cell is cell 0, first node is 0 last node Nx
-        ArrayXd frac1 = 1 - (xp / dx - ix.cast<double>()); // W_{pg}
+
+
+        ArrayXi ix = (xp / dx).floor().cast<int>(); // cell of the particle
+        ArrayXd frac1 = 1 - (xp / dx - ix.cast<double>()); // first cell of influence due to interpolation function
         ArrayXi ix2 = mod((ix + 1), Nx).cast<int>(); // second cell of influence due to extended local support of first order b-spline
 
+        // Moment gathering
         std::vector<Triplet<double>> tripletList(Np * 4);
         #pragma omp parallel for shared(tripletList)
         for (int ip = 0; ip < Np; ip++) {
@@ -96,6 +99,7 @@ namespace TestProblems {
         SparseMatrix<double> M(Nx, Nx);
         M.setFromTriplets(tripletList.begin(), tripletList.end());
 
+        // computing the charge of each particle so that a constant charge density is obtained
         VectorXd rhotarget = -VectorXd::Ones(Nx) * Vx;
         SimplicialLDLT<SparseMatrix<double>> solver;
         solver.compute(M);
@@ -111,58 +115,7 @@ namespace TestProblems {
             return 1;
         }
 
-        qp = rhotildeV.array()(ix) * frac1 + rhotildeV.array()(ix2) * (1 - frac1);
-        return 0;
-    }
-
-    // 1D-1V
-    int SetLandauDamping(ArrayXd& xp, ArrayXd& vp, ArrayXd& E0, ArrayXd& Bc, ArrayXd& qp, int Nx = 128, int Np = 10000, double L = 2 * EIGEN_PI) {
-        double dx = L / Nx;
-        double Vx = pow(L / Np, 1);
-        ArrayXd ux = ArrayXd::Random(Np);
-        ArrayXd uv = ArrayXd::Random(Np);
-        double alpha = 0.4;
-        int k = 1;
-
-        #pragma omp parallel for 
-        for (int i = 0; i < Np; i++) {
-            vp(i) = sqrt(2) * erfinv((2 * k * uv(i)) / (alpha * sin(k * L) + k * L));
-        }
-        xp = ((2 * EIGEN_PI * k * (alpha * sin(L * k) + L * k) * ux / (alpha * vp)) - 1 / alpha).acos() / k; // Error: acos only works on [-1,1]
-        E0 = ArrayXd::Zero(Nx);//initialization of electric field in each of the grid cells
-        Bc = ArrayXd::Ones(Nx) / 10;
-
-        ArrayXi ix = (xp / dx).floor().cast<int>(); // cell of the particle, first cell is cell 0, first node is 0 last node Nx
-        ArrayXd frac1 = 1 - (xp / dx - ix.cast<double>()); // W_{pg}
-        ArrayXi ix2 = mod((ix + 1), Nx).cast<int>(); // second cell of influence due to extended local support of first order b-spline
-
-        std::vector<Triplet<double>> tripletList(Np * 4);
-#pragma omp parallel for shared(tripletList)
-        for (int ip = 0; ip < Np; ip++) {
-            tripletList[ip * 4] = Triplet<double>(ix(ip), ix(ip), pow(frac1(ip), 2));
-            tripletList[ip * 4 + 1] = Triplet<double>(ix2(ip), ix(ip), frac1(ip) * (1 - frac1(ip)));
-            tripletList[ip * 4 + 2] = Triplet<double>(ix(ip), ix2(ip), frac1(ip) * (1 - frac1(ip)));
-            tripletList[ip * 4 + 3] = Triplet<double>(ix2(ip), ix2(ip), pow((1 - frac1(ip)), 2));
-        }
-        SparseMatrix<double> M(Nx, Nx);
-        M.setFromTriplets(tripletList.begin(), tripletList.end());
-
-        VectorXd rhotarget = -VectorXd::Ones(Nx) * Vx;
-        SimplicialLDLT<SparseMatrix<double>> solver;
-        solver.compute(M);
-        if (solver.info() != Success) {
-            // decomposition failed
-            std::cerr << "Decomposition failed" << std::endl;
-            return 1;
-        }
-        auto rhotildeV = solver.solve(rhotarget);
-        if (solver.info() != Success) {
-            // solving failed
-            std::cerr << "Solving failed" << std::endl;
-            return 1;
-        }
-
-        qp = rhotildeV.array()(ix) * frac1 + rhotildeV.array()(ix2) * (1 - frac1);
+        qp = rhotildeV.array()(ix) * frac1 + rhotildeV.array()(ix2) * (1 - frac1); // Charge of each particle
         return 0;
     }
 }
@@ -180,7 +133,7 @@ protected:
     double theta = 0.5; //theta of field and particle mover
     const ArrayXd& qp; // charge of each particle
     double Vx; // volume of regular grid
-    LinSolvers::LinSolver<P> solver;
+    LinSolvers::LinSolver<P> solver; // solver used to solve the linear system of the field solver
 public:
     ECSIMBase(double L, int Np, int Nx, int Nsub, double dt, Eigen::ArrayXd const& qp, LinSolvers::SolverType type=LinSolvers::SolverType::LU)
         :L(L), Np(Np), Nx(Nx), Nsub(Nsub), dt(dt), qp(qp),solver(LinSolvers::LinSolver<P>(type))
@@ -206,6 +159,7 @@ public:
 
     inline void Set_solver(LinSolvers::SolverType type) { solver = LinSolvers::LinSolver(type); }
 
+    // Calculate the energy contained in a state of the plasma
     inline Eigen::Array3d Energy(const Eigen::Ref<const MatrixXd> Xn) const {
         Eigen::Map < const Array<double, vdim, -1>> vp(Xn.data() + xdim * Np, vdim, Np);
         Eigen::Map < const Array<double, vdim, -1>> E0(Xn.data() + (xdim + vdim) * Np, vdim, Nx);
@@ -219,6 +173,7 @@ public:
 
     }
 
+    // Calculate the divergence of the magnetic field
     inline Eigen::ArrayXXd Divergence(const Eigen::Ref<const MatrixXd> X) const {
         ArrayXXd div = ArrayXXd::Zero(xdim * this->Nx, X.cols());
         for (int i = 0; i < X.cols(); i++) {
@@ -233,6 +188,7 @@ public:
         return div;
     }
 
+    // Calculate the error between two solution states, where the error is split into position, velocity, electric field and magnetic field
     inline Eigen::Array4Xd Error(const Eigen::Ref<const MatrixXd> X, const Eigen::Ref<const MatrixXd> Y) const {
 
         Eigen::Array4Xd errors = Array4Xd::Zero(4,X.cols());
@@ -323,13 +279,13 @@ class ECSIM : public ECSIMBase<xdim, vdim, P> {
 public:
     using ECSIMBase<xdim, vdim,P>::ECSIMBase;
 
-    // yn is a 1D array and will only contain the state at t1
+    // Advance the solution given in xn from timestep t0 to t1, where yn will contain the solution at t1 and the returned matrix contains all steps of the size self->dt made
     inline ArrayXXd Step(const Eigen::Ref<const MatrixXd> xn, double t0, double t1, Eigen::Ref<MatrixXd> yn) const {
         throw std::runtime_error("Only vdim == 1 or vdim == 3 are supported");
         return ArrayXXd(0, 0);
     }
     
-    // yn is a 2D array and will contain the full simulation on exit
+    // yn is a 2D array and will contain the full simulation on exit (where the first column i sthe , uses the time step size determined by the class and performs as many steps as the number of columns in yn
     ArrayXXd Solve(const Eigen::Ref<const MatrixXd> xn, double t0, double t1, Eigen::Ref<MatrixXd> yn) const {
         throw std::runtime_error("Only vdim == 1 or vdim == 3 are supported");
         return ArrayXXd(0, 0);
@@ -341,7 +297,7 @@ class ECSIM<xdim,1, P>: public ECSIMBase<xdim, 1, P> {
 public:
     using ECSIMBase<xdim, 1, P>::ECSIMBase;
 
-    // yn is a 1D array and will only contain the state at t1
+    // Advance the solution given in xn from timestep t0 to t1, where yn will contain the solution at t1 and the returned matrix contains all steps of the size self->dt made
     inline ArrayXXd Step(const Eigen::Ref<const MatrixXd> xn, double t0, double t1, Eigen::Ref<MatrixXd> yn) const {
         int nb_steps = round(abs(t1 - t0) / this->dt);
         MatrixXd steps(yn.rows(), nb_steps + 1);
@@ -350,10 +306,11 @@ public:
         return res;
     }
     
-    // yn is a 2D array and will contain the full simulation on exit
+    // yn is a 2D array and will contain the full simulation on exit (where the first column i sthe , uses the time step size determined by the class and performs as many steps as the number of columns in yn
     ArrayXXd Solve(const Eigen::Ref<const MatrixXd> xn, double t0, double t1, Eigen::Ref<MatrixXd> yn) const {
         yn.col(0) = xn;
 
+        // Parse the input vector into the position, velocity, electric and magnetic fields
         ArrayXd x_view = yn.col(0).head(this->Np);
         ArrayXd vp = yn.col(0).segment(this->Np, this->Np);
         ArrayXd E0 = yn.col(0).segment(2 * this->Np, this->Nx);
@@ -379,15 +336,17 @@ public:
         Eigen::VectorXd xKrylov(this->Nx);
         Eigen::SparseMatrix<double> Maxwell(this->Nx, this->Nx);
         VectorXd x0 = VectorXd::Zero(this->Nx);
-        // Eigen doesn't want to cast when this is not done
+        // Needed for type casting
         int Nx = this->Nx;
         double dx = this->dx;
         ArrayXXd timing_iteration = ArrayXXd(yn.cols() - 1, 3);
         for (int step = 0; step < yn.cols() - 1; step++) {
             auto tic = std::chrono::high_resolution_clock::now();
+            // Particle mover (Part 1 position update)
+            // Subcycling
             for (int itsub = 0; itsub < this->Nsub; itsub++) {
                 x_view += vp * this->dt / this->Nsub;
-                // Position is periodic with period L (parareal can go out of bounds between solves)
+                // Position is periodic with period L
                 x_view = mod(x_view, this->L);
 
                 ix.col(itsub) = (x_view / dx).floor().cast<int>(); // cell of the particle, first cell is cell 0, first node is 0 last node this->Nx
@@ -399,25 +358,29 @@ public:
                     tripletListfrac[2 * (itsub * this->Np + ip) + 1] = Triplet<double>(ix2(ip, itsub), ip, (1 - frac1(ip, itsub)) / this->Nsub);
                 }
             }
+            // Moment gathering (current density)
             frac_p.setFromTriplets(tripletListfrac.begin(), tripletListfrac.end());
             J0 = frac_p * (this->qp * vp / this->Vx).matrix();
             M = (frac_p * this->qp.matrix().asDiagonal()) * frac_p.transpose();
 
-            bKrylov = E0 - J0 * this->dt * this->theta;
-            Maxwell = NxIdentity + this->qom * this->dt * this->dt * this->theta / 2 / this->dx * M;
+            // Field solver
+            bKrylov = E0 - J0 * this->dt * this->theta; // b
+            Maxwell = NxIdentity + this->qom * this->dt * this->dt * this->theta / 2 / this->dx * M; // A
 
             auto tic_solve = std::chrono::high_resolution_clock::now();
-            xKrylov = this->solver.solve(Maxwell, bKrylov, x0);
+            xKrylov = this->solver.solve(Maxwell, bKrylov, x0); // Ax = b
             auto toc_solve = std::chrono::high_resolution_clock::now();
             timing_iteration.row(step) << step * this->dt, std::chrono::duration_cast<std::chrono::microseconds>(toc_solve - tic_solve).count(), this->solver.getIterations();
 
             E0 = (xKrylov.array() - E0 * (1 - this->theta)) / this->theta;
+            // Particle mover (Part 2 velocity update)
             for (int itsub = 0; itsub < this->Nsub; itsub++) {
                 vp += this->dt / this->Nsub * (xKrylov.array()(ix.col(itsub)) * frac1.col(itsub) + xKrylov.array()(ix2.col(itsub)) * (1 - frac1.col(itsub))) * this->qom;
             }
 
             yn.col(step + 1) << x_view, vp, E0, Bc;
             auto toc = std::chrono::high_resolution_clock::now();
+            // Energy error calculation
             double diff = abs((this->Energy(yn.col(step + 1)) - oldE).sum()) / abs(oldE.sum());
             //PRINT("Finished timestep", step, " in ", std::chrono::duration_cast<std::chrono::milliseconds>(toc - tic).count(), "ms with ", this->Nsub,"subcycles and energy conservation equal to ",diff);
         }
@@ -430,7 +393,7 @@ class ECSIM<xdim, 3, P> :public ECSIMBase<xdim, 3, P> {
 public:
     using ECSIMBase<xdim, 3, P>::ECSIMBase;
 
-    //yn is a 1D array and will only contain the state at t1
+    // Advance the solution given in xn from timestep t0 to t1, where yn will contain the solution at t1 and the returned matrix contains all steps of the size self->dt made
     inline ArrayXXd Step(const Eigen::Ref<const MatrixXd> xn, double t0, double t1, Eigen::Ref<MatrixXd> yn) const {
         int nb_steps = round(abs(t1 - t0) / this->dt);
         MatrixXd steps(yn.rows(), nb_steps + 1);
@@ -440,10 +403,11 @@ public:
     }
 
 
-    //yn is a 2D array and will contain the full simulation on exit
+    // yn is a 2D array and will contain the full simulation on exit (where the first column i sthe , uses the time step size determined by the class and performs as many steps as the number of columns in yn
     ArrayXXd Solve(const Eigen::Ref<const MatrixXd> xn, double t0, double t1, Eigen::Ref<MatrixXd> yn) const {
         yn.col(0) = xn;
 
+        // Parse the input vector into the position, velocity, electric and magnetic fields
         ArrayXd x_view = yn.col(0).head(this->Np);
         Eigen::Map <Array<double, 3, -1>> vp(yn.col(0).data() + xdim * this->Np, 3, this->Np);
         Eigen::Map <Array<double, 3, -1>> E0(yn.col(0).data() + (xdim + 3) * this->Np, 3, this->Nx);
@@ -483,6 +447,7 @@ public:
 
         double beta = this->qom * this->dt / 2 / this->Nsub;
 
+        // Needed for type casting
         int Nx = this->Nx;
         double dx = this->dx;
 
@@ -500,16 +465,20 @@ public:
             B.col(0) = 0.5 * (Bc.col(B.cols() - 1) + Bc.col(0));
 
             J0.setZero();
+            
+            // Subcycling
             #pragma omp parallel for 
             for (int itsub = 0; itsub < this->Nsub; itsub++){
+                // Particle mover (Part 1 position update)
                 cycle_steps.col(itsub) = x_view + vp.row(0).transpose() * (itsub + 1) * this->dt / this->Nsub;
-                // Position is periodic with period L (parareal can go out of bounds between solves)
+                // Position is periodic with period L
                 cycle_steps.col(itsub) = mod(cycle_steps.col(itsub), this->L);
 
                 ix.col(itsub) = (cycle_steps.col(itsub) / dx).floor().cast<int>(); // cell of the particle, first cell is cell 0, first node is 0 last node this->Nx
                 frac1.col(itsub) = 1 - (cycle_steps.col(itsub) / this->dx - ix.col(itsub).cast<double>()); // W_{pg}
                 ix2.col(itsub) = mod((ix.col(itsub) + 1), Nx).cast<int>(); // second cell of influence due to extended local support of first order b-spline
 
+                // Moment gathering: calculate vphat and alphap used for the current density calculations
                 for (int ip = 0; ip < this->Np; ip++) {
                     Bp[itsub].col(ip) = B.col(ix(ip, itsub)) * frac1(ip, itsub) + B.col(ix2(ip, itsub)) * (1 - frac1(ip, itsub));
                     double sx = Bp[itsub](0, ip) * beta;
@@ -526,6 +495,7 @@ public:
                     //J0.col(ix2(ip, itsub)) += (1 - frac1(ip, itsub)) * this->qp(ip) * vphat[itsub].col(ip);
 
                 }
+                // Average position and the interpolation functions of particles in each of the subcycle steps
                 for (int j = 0; j < 3; j++) {
                     for (int i = 0; i < 3; i++) {
                         for (int ip = 0; ip < this->Np; ip++) {
@@ -537,18 +507,19 @@ public:
                     }
                 }
             }
+            // Calculate current density
             for (int itsub = 0; itsub < this->Nsub; itsub++) {
                 for (int ip = 0; ip < this->Np; ip++) {
                     J0.col(ix(ip, itsub)) += frac1(ip, itsub) * this->qp(ip) * vphat[itsub].col(ip);
                     J0.col(ix2(ip, itsub)) += (1 - frac1(ip, itsub)) * this->qp(ip) * vphat[itsub].col(ip);
                 }
             }
-
-            x_view += vp.row(0) * this->dt;
-            x_view = mod(x_view, this->L);
-
             J0 /= this->Vx * this->Nsub;
-            // Setting Ms in columnmajor ordering -> [M0_0, M1_0, M2_0, M0_1, M1_1, M2_1, ...]
+
+            // Set the eventual position equal to the position after the last subcycle
+            x_view = cycle_steps.col(this->Nsub-1);
+
+            // Ms is in columnmajor ordering -> [M0_0, M1_0, M2_0, M0_1, M1_1, M2_1, ...]
             for (int j = 0; j < 3; j++) {
                 for (int i = 0; i < 3; i++) {
                     Ms[3 * j + i].resize(this->Nx, this->Nx);
@@ -556,10 +527,13 @@ public:
                 }
             }
 
+            // Field solver
+            // Discretisation of Ampere's law
             AmpereX = NxIdentity + this->qom * this->dt * this->dt * this->theta / 2 * Ms[0] / this->dx;
             AmpereY = NxIdentity + this->qom * this->dt * this->dt * this->theta / 2 * Ms[4] / this->dx;
             AmpereZ = NxIdentity + this->qom * this->dt * this->dt * this->theta / 2 * Ms[8] / this->dx;
 
+            // Curl discretisation
             for (int i = 0; i < this->Nx; i++) {
                 tripletListDerv[2 * i] = Triplet<double>(i, i, 1 / this->dx* this->dt * this->theta);
                 tripletListDerv[2 * i + 1] = Triplet<double>(i, (i - 1 + this->Nx) % this->Nx, -1 / this->dx * this->dt * this->theta);
@@ -570,12 +544,13 @@ public:
             Derv.setFromTriplets(tripletListDerv.begin(), tripletListDerv.end());
             Derc.setFromTriplets(tripletListDerc.begin(), tripletListDerc.end());
 
+            // Create righthand side of linear system based on the full discretisation scheme of the maxwell equations
             bKrylov << (E0.row(0) - J0.row(0) * this->dt * this->theta).transpose(), (E0.row(1) - J0.row(1) * this->dt * this->theta).transpose(), (E0.row(2) - J0.row(2) * this->dt * this->theta).transpose(), Bc.row(1).transpose(), Bc.row(2).transpose();
             tripletListMaxwell.resize(AmpereX.nonZeros() + AmpereY.nonZeros() + AmpereZ.nonZeros() + Ms[1].nonZeros() + Ms[2].nonZeros() + Ms[3].nonZeros() +
                 Ms[5].nonZeros() + Ms[6].nonZeros() + Ms[7].nonZeros() + 2 * Derv.nonZeros() + 2 * Derc.nonZeros() + 2 * this->Nx);
 
             int index = 0;
-            // Fill Maxwell matrix
+            // Fill linear system matrix based on the full discretisation scheme of the maxwell equations
             {
                 // First Rowblock
                 for (int k = 0; k < AmpereX.outerSize(); ++k)
@@ -671,7 +646,9 @@ public:
             Bc.row(1) = (xKrylov(seqN(3 * this->Nx, this->Nx)).array() - Bc.row(1).transpose() * (1 - this->theta)) / this->theta;
             Bc.row(2) = (xKrylov(seqN(4 * this->Nx, this->Nx)).array() - Bc.row(2).transpose() * (1 - this->theta)) / this->theta;
 
+            // Subcycling
             for (int itsub = 0; itsub < this->Nsub; itsub++) {
+                // Particle mover (Part 2 velocity update)
                 for (int ip = 0; ip < this->Np; ip++) {
                     vp.col(ip) = (2 * alphap[itsub * this->Np + ip] - Matrix3d::Identity()) * vp.col(ip).matrix() + alphap[itsub * this->Np + ip] * this->qom * this->dt / this->Nsub * (Map < Array<double, 3, Dynamic, Eigen::RowMajor>>(xKrylov.data(), 3, this->Nx).col(ix(ip, itsub)) * frac1(ip, itsub) + Map < Array<double, 3, Dynamic, Eigen::RowMajor>>(xKrylov.data(), 3, this->Nx).col(ix2(ip, itsub)) * (1 - frac1(ip, itsub))).matrix();
                 }
